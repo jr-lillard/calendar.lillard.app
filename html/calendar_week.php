@@ -103,7 +103,7 @@ function fmt_hour_label(int $h): string {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 6; --end-hour: 22; }
+      :root { --hour-height: 56px; --start-hour: 6; --end-hour: 24; }
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -128,7 +128,7 @@ function fmt_hour_label(int $h): string {
           transparent var(--hour-height)
         );
       }
-      .axis-hour { position: absolute; left: 4px; font-size: 0.75rem; color: #6c757d; transform: translateY(-0.5em); }
+      .axis-hour { position: absolute; left: 4px; font-size: 0.75rem; color: #6c757d; transform: translateY(-50%); white-space: nowrap; }
 
       .day-col { min-width: 180px; }
       .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; }
@@ -151,7 +151,8 @@ function fmt_hour_label(int $h): string {
         padding: .25rem .4rem;
         overflow: hidden;
       }
-      .all-day-badge { display: inline-block; margin-right: .25rem; }
+      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
+      .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
     </style>
   </head>
   <body class="bg-light min-vh-100">
@@ -186,7 +187,7 @@ function fmt_hour_label(int $h): string {
           <div class="time-axis">
             <div class="axis-header"></div>
             <div class="axis-content">
-              <?php $startHour = 6; $endHour = 22; for ($h=$startHour; $h<=$endHour; $h++): ?>
+              <?php $startHour = 6; $endHour = 24; for ($h=$startHour; $h<=$endHour; $h++): ?>
                 <div class="axis-hour" style="top: calc(<?= (int)($h - $startHour) ?> * var(--hour-height));">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
@@ -195,7 +196,7 @@ function fmt_hour_label(int $h): string {
           </div>
           <?php
             // Prepare day structures with all-day vs timed events and computed positions
-            $startHour = 6; $endHour = 22; $hourPx = 56; $pxPerMin = $hourPx/60.0;
+            $startHour = 6; $endHour = 24;
             foreach ($days as $ymd => $evs):
               $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz);
               $dayStartTs = $d->getTimestamp();
@@ -207,7 +208,7 @@ function fmt_hour_label(int $h): string {
                 if ($st === null) continue;
                 $stLocal = (new DateTimeImmutable('@'.$st))->setTimezone($tz)->getTimestamp();
                 $etLocal = $et !== null ? (new DateTimeImmutable('@'.$et))->setTimezone($tz)->getTimestamp() : $stLocal + 3600;
-                // Clamp to visible window (6:00–22:00)
+                // Clamp to visible window (6:00–24:00)
                 $windowStartMin = $startHour * 60; $windowEndMin = $endHour * 60;
                 $startMin = (int)floor(($stLocal - $dayStartTs)/60);
                 $endMin = (int)ceil(($etLocal - $dayStartTs)/60);
@@ -218,27 +219,34 @@ function fmt_hour_label(int $h): string {
                 $clipEnd = min(max($endMin, $clipStart + 15), $windowEndMin);
                 $timed[] = [
                   'ev' => $ev,
-                  'top' => (int)round(($clipStart - $windowStartMin) * $pxPerMin),
-                  'height' => (int)max(6, round(($clipEnd - $clipStart) * $pxPerMin)),
-                  'label_time' => fmt_time($stLocal, $tz),
+                  'top_min' => ($clipStart - $windowStartMin),
+                  'height_min' => max(6, ($clipEnd - $clipStart)),
+                  'label_start' => fmt_time($stLocal, $tz),
+                  'label_end' => fmt_time($etLocal, $tz),
                 ];
               }
           ?>
             <div class="day-col">
               <div class="card shadow-sm day-card">
                 <div class="card-header bg-white day-header">
-                  <div class="fw-semibold d-flex flex-wrap align-items-center gap-1">
-                    <span><?= h($d->format('D M j')) ?></span>
+                  <div class="fw-semibold mb-1"><?= h($d->format('D M j')) ?></div>
+                  <div class="all-day-row">
                     <?php foreach ($allDay as $ev): ?>
-                      <span class="badge text-bg-primary all-day-badge"><?= h($ev['summary'] ?: 'All day') ?></span>
+                      <div class="all-day-block">
+                        <span class="me-1">All day</span>
+                        <span class="fw-semibold"><?= h($ev['summary'] ?: '(No title)') ?></span>
+                        <?php if (!empty($ev['location'])): ?>
+                          <span class="text-muted">· <?= h($ev['location']) ?></span>
+                        <?php endif; ?>
+                      </div>
                     <?php endforeach; ?>
                   </div>
                 </div>
                 <div class="day-body">
                   <div class="day-content">
                     <?php foreach ($timed as $t): $ev = $t['ev']; ?>
-                      <div class="event-block" style="top: <?= (int)$t['top'] ?>px; height: <?= (int)$t['height'] ?>px;">
-                        <div class="small text-muted"><?= h($t['label_time']) ?></div>
+                      <div class="event-block" style="top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60); height: calc(<?= (int)$t['height_min'] ?> * var(--hour-height) / 60);">
+                        <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
                         <div class="fw-semibold small text-truncate"><?= h($ev['summary'] ?: '(No title)') ?></div>
                         <?php if (!empty($ev['location'])): ?>
                           <div class="small text-muted text-truncate"><?= h($ev['location']) ?></div>
@@ -256,7 +264,7 @@ function fmt_hour_label(int $h): string {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       (function(){
-        const startHour = 6, endHour = 22;
+        const startHour = 6, endHour = 24;
         function layout() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
           const axisHeader = document.querySelector('.axis-header');
