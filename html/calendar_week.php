@@ -111,9 +111,9 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
       .day-header { position: sticky; top: 0; z-index: 1; }
     </style>
   </head>
-  <body class="bg-light">
+  <body class="bg-light min-vh-100">
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
-      <div class="container">
+      <div class="container-fluid">
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
@@ -121,7 +121,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
         </div>
       </div>
     </nav>
-    <main class="container py-4">
+    <main class="container-fluid py-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h4 class="mb-0"><?= h($cal['name']) ?> · Week of <?= h($weekStart->format('M j, Y')) ?></h4>
