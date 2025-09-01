@@ -230,6 +230,23 @@ function css_colors_from_hex(?string $hex): ?array {
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+
+      /* Print styles: landscape, start at grid, single page fit */
+      @media print {
+        @page { size: landscape; margin: 10mm; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        /* Hide chrome above the grid */
+        .navbar, .week-main > .d-flex, .alert { display: none !important; }
+        .week-main { padding: 0 !important; }
+        .week-scroll { overflow: visible !important; }
+        /* Compress to fit */
+        :root { --hour-height: 16px; }
+        .week-grid { grid-template-columns: 40px repeat(7, minmax(120px, 1fr)); height: auto; page-break-inside: avoid; }
+        .day-col { min-width: 120px; }
+        .axis-hour { font-size: 0.65rem; }
+        .all-day-block { font-size: .75rem; }
+        .event-block { padding: .2rem .3rem; }
+      }
     </style>
   </head>
   <body class="bg-light min-vh-100">
@@ -238,6 +255,7 @@ function css_colors_from_hex(?string $hex): ?array {
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
+          <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
