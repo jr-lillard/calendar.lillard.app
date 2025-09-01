@@ -98,7 +98,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; }
+      :root { --hour-height: 56px; --start-hour: 6; --end-hour: 22; }
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -113,7 +113,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
       }
       .time-axis { position: relative; }
       .axis-content {
-        position: relative; height: calc(var(--hour-height) * 24);
+        position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
         background: repeating-linear-gradient(to bottom,
           rgba(0,0,0,0.06) 0,
           rgba(0,0,0,0.06) 1px,
@@ -128,7 +128,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
       .day-header { position: sticky; top: 0; z-index: 1; background: #fff; }
       .day-body { position: relative; height: 100%; }
       .day-content {
-        position: relative; height: calc(var(--hour-height) * 24);
+        position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
         background: repeating-linear-gradient(to bottom,
           rgba(0,0,0,0.06) 0,
           rgba(0,0,0,0.06) 1px,
@@ -178,8 +178,8 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
         <div class="week-grid">
           <div class="time-axis">
             <div class="axis-content">
-              <?php for ($h=0; $h<24; $h++): ?>
-                <div class="axis-hour" style="top: calc(<?= (int)$h ?> * var(--hour-height));">
+              <?php $startHour = 6; $endHour = 22; for ($h=$startHour; $h<=$endHour; $h++): ?>
+                <div class="axis-hour" style="top: calc(<?= (int)($h - $startHour) ?> * var(--hour-height));">
                   <?= h(str_pad((string)$h, 2, '0', STR_PAD_LEFT)) ?>:00
                 </div>
               <?php endfor; ?>
@@ -187,7 +187,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
           </div>
           <?php
             // Prepare day structures with all-day vs timed events and computed positions
-            $hourPx = 56; $pxPerMin = $hourPx/60.0;
+            $startHour = 6; $endHour = 22; $hourPx = 56; $pxPerMin = $hourPx/60.0;
             foreach ($days as $ymd => $evs):
               $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz);
               $dayStartTs = $d->getTimestamp();
@@ -199,13 +199,19 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
                 if ($st === null) continue;
                 $stLocal = (new DateTimeImmutable('@'.$st))->setTimezone($tz)->getTimestamp();
                 $etLocal = $et !== null ? (new DateTimeImmutable('@'.$et))->setTimezone($tz)->getTimestamp() : $stLocal + 3600;
-                // Clamp to day bounds
-                $startMin = max(0, (int)floor(($stLocal - $dayStartTs)/60));
-                $endMin = min(24*60, max($startMin+15, (int)ceil(($etLocal - $dayStartTs)/60)));
+                // Clamp to visible window (6:00–22:00)
+                $windowStartMin = $startHour * 60; $windowEndMin = $endHour * 60;
+                $startMin = (int)floor(($stLocal - $dayStartTs)/60);
+                $endMin = (int)ceil(($etLocal - $dayStartTs)/60);
+                if ($endMin <= $windowStartMin || $startMin >= $windowEndMin) {
+                  continue; // completely outside visible window
+                }
+                $clipStart = max($startMin, $windowStartMin);
+                $clipEnd = min(max($endMin, $clipStart + 15), $windowEndMin);
                 $timed[] = [
                   'ev' => $ev,
-                  'top' => (int)round($startMin * $pxPerMin),
-                  'height' => (int)max(6, round(($endMin - $startMin) * $pxPerMin)),
+                  'top' => (int)round(($clipStart - $windowStartMin) * $pxPerMin),
+                  'height' => (int)max(6, round(($clipEnd - $clipStart) * $pxPerMin)),
                   'label_time' => fmt_time($stLocal, $tz),
                 ];
               }
