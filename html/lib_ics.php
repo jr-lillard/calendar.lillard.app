@@ -62,8 +62,10 @@ function ics_parse_events(string $raw): array {
         $loc = $ev['LOCATION']['value'] ?? '';
         $startS = $ev['DTSTART']['value'] ?? '';
         $endS = $ev['DTEND']['value'] ?? '';
-        $start = ics_parse_dt($startS);
-        $end = ics_parse_dt($endS);
+        $startTzid = strtoupper((string)($ev['DTSTART']['params']['TZID'] ?? ''));
+        $endTzid = strtoupper((string)($ev['DTEND']['params']['TZID'] ?? ''));
+        $start = ics_parse_dt_with_tz($startS, $startTzid);
+        $end = ics_parse_dt_with_tz($endS, $endTzid);
         // Recurrence
         $rrule = [];
         if (!empty($ev['RRULE']['value'] ?? '')) {
@@ -127,6 +129,39 @@ function ics_parse_dt(string $s): array {
         }
     } catch (Throwable $e) {
         // ignore
+    }
+    return ['ts' => null, 'display' => $s];
+}
+
+function ics_parse_dt_with_tz(string $s, ?string $tzid): array {
+    $s = trim($s);
+    if ($s === '') return ['ts' => null, 'display' => ''];
+    // If UTC literal Z, parse as UTC and convert display to local
+    if (str_ends_with($s, 'Z')) {
+        return ics_parse_dt($s);
+    }
+    $tzLocal = new DateTimeZone(date_default_timezone_get());
+    $tz = $tzLocal;
+    if (!empty($tzid)) {
+        try { $tz = new DateTimeZone($tzid); } catch (Throwable $e) { $tz = $tzLocal; }
+    }
+    // Try datetime and date-only
+    // Datetime without Z: interpret in tz, but display in local
+    if (preg_match('/^\d{8}T\d{6}$/', $s)) {
+        $dt = DateTimeImmutable::createFromFormat('Ymd\THis', $s, $tz);
+        if ($dt) {
+            $ts = $dt->getTimestamp();
+            $disp = $dt->setTimezone($tzLocal)->format('Y-m-d H:i');
+            return ['ts' => $ts, 'display' => $disp];
+        }
+    }
+    if (preg_match('/^\d{8}$/', $s)) {
+        $dt = DateTimeImmutable::createFromFormat('Ymd', $s, $tz);
+        if ($dt) {
+            $ts = $dt->getTimestamp();
+            $disp = $dt->setTimezone($tzLocal)->format('Y-m-d');
+            return ['ts' => $ts, 'display' => $disp];
+        }
     }
     return ['ts' => null, 'display' => $s];
 }

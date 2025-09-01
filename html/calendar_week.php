@@ -90,8 +90,11 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
     return (new DateTimeImmutable('@'.$ts))->setTimezone($tz)->format('g:ia');
 }
 function fmt_hour_label(int $h): string {
-    $ampm = $h >= 12 ? 'PM' : 'AM';
-    $h12 = $h % 12; if ($h12 === 0) $h12 = 12;
+    // Treat 24 as 0 (midnight)
+    $hm = $h % 24;
+    $ampm = $hm >= 12 ? 'PM' : 'AM';
+    $h12 = $hm % 12; if ($h12 === 0) $h12 = 12;
+    if ($hm === 0) $ampm = 'AM';
     return $h12.' '.$ampm;
 }
 ?>
@@ -188,7 +191,7 @@ function fmt_hour_label(int $h): string {
             <div class="axis-header"></div>
             <div class="axis-content">
               <?php $startHour = 6; $endHour = 24; for ($h=$startHour; $h<=$endHour; $h++): ?>
-                <div class="axis-hour" style="top: calc(<?= (int)($h - $startHour) ?> * var(--hour-height));">
+                <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 1px);">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
               <?php endfor; ?>
@@ -233,7 +236,6 @@ function fmt_hour_label(int $h): string {
                   <div class="all-day-row">
                     <?php foreach ($allDay as $ev): ?>
                       <div class="all-day-block">
-                        <span class="me-1">All day</span>
                         <span class="fw-semibold"><?= h($ev['summary'] ?: '(No title)') ?></span>
                         <?php if (!empty($ev['location'])): ?>
                           <span class="text-muted">· <?= h($ev['location']) ?></span>
