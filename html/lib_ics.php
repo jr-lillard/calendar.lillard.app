@@ -62,8 +62,8 @@ function ics_parse_events(string $raw): array {
         $loc = $ev['LOCATION']['value'] ?? '';
         $startS = $ev['DTSTART']['value'] ?? '';
         $endS = $ev['DTEND']['value'] ?? '';
-        $startTzid = strtoupper((string)($ev['DTSTART']['params']['TZID'] ?? ''));
-        $endTzid = strtoupper((string)($ev['DTEND']['params']['TZID'] ?? ''));
+        $startTzid = (string)($ev['DTSTART']['params']['TZID'] ?? '');
+        $endTzid = (string)($ev['DTEND']['params']['TZID'] ?? '');
         $start = ics_parse_dt_with_tz($startS, $startTzid);
         $end = ics_parse_dt_with_tz($endS, $endTzid);
         // Recurrence

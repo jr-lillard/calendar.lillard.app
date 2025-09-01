@@ -209,12 +209,12 @@ function fmt_hour_label(int $h): string {
                 if ($isAll) { $allDay[] = $ev; continue; }
                 $st = $ev['start']['ts'] ?? null; $et = $ev['end']['ts'] ?? null;
                 if ($st === null) continue;
-                $stLocal = (new DateTimeImmutable('@'.$st))->setTimezone($tz)->getTimestamp();
-                $etLocal = $et !== null ? (new DateTimeImmutable('@'.$et))->setTimezone($tz)->getTimestamp() : $stLocal + 3600;
-                // Clamp to visible window (6:00–24:00)
+                // Compute minutes since local midnight using local H:i
+                $stDT = (new DateTimeImmutable('@'.$st))->setTimezone($tz);
+                $etDT = $et !== null ? (new DateTimeImmutable('@'.$et))->setTimezone($tz) : $stDT->modify('+1 hour');
                 $windowStartMin = $startHour * 60; $windowEndMin = $endHour * 60;
-                $startMin = (int)floor(($stLocal - $dayStartTs)/60);
-                $endMin = (int)ceil(($etLocal - $dayStartTs)/60);
+                $startMin = (int)$stDT->format('G') * 60 + (int)$stDT->format('i');
+                $endMin = (int)$etDT->format('G') * 60 + (int)$etDT->format('i');
                 if ($endMin <= $windowStartMin || $startMin >= $windowEndMin) {
                   continue; // completely outside visible window
                 }
@@ -224,8 +224,8 @@ function fmt_hour_label(int $h): string {
                   'ev' => $ev,
                   'top_min' => ($clipStart - $windowStartMin),
                   'height_min' => max(6, ($clipEnd - $clipStart)),
-                  'label_start' => fmt_time($stLocal, $tz),
-                  'label_end' => fmt_time($etLocal, $tz),
+                  'label_start' => $stDT->format('g:ia'),
+                  'label_end' => $etDT->format('g:ia'),
                 ];
               }
           ?>
