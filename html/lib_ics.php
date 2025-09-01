@@ -47,6 +47,11 @@ function ics_parse_events(string $raw): array {
             $kv = explode('=', $p, 2);
             $params[strtoupper($kv[0])] = $kv[1] ?? '';
         }
+        // Accumulate EXDATE occurrences if repeated
+        if ($name === 'EXDATE') {
+            if (!isset($current['EXDATE_LINES'])) { $current['EXDATE_LINES'] = []; }
+            $current['EXDATE_LINES'][] = $value;
+        }
         $current[$name] = ['value' => $value, 'params' => $params];
     }
     // Normalize map
@@ -59,6 +64,30 @@ function ics_parse_events(string $raw): array {
         $endS = $ev['DTEND']['value'] ?? '';
         $start = ics_parse_dt($startS);
         $end = ics_parse_dt($endS);
+        // Recurrence
+        $rrule = [];
+        if (!empty($ev['RRULE']['value'] ?? '')) {
+            $rrule = ics_parse_rrule((string)$ev['RRULE']['value']);
+        }
+        // Exceptions (EXDATE)
+        $exdates = [];
+        if (!empty($ev['EXDATE_LINES'] ?? [])) {
+            foreach ((array)$ev['EXDATE_LINES'] as $line) {
+                foreach (explode(',', (string)$line) as $tok) {
+                    $tok = trim($tok);
+                    if ($tok === '') continue;
+                    $ex = ics_parse_dt($tok);
+                    if ($ex['ts'] !== null) { $exdates[] = (int)$ex['ts']; }
+                }
+            }
+        } elseif (!empty($ev['EXDATE']['value'] ?? '')) { // single-line case
+            foreach (explode(',', (string)$ev['EXDATE']['value']) as $tok) {
+                $tok = trim($tok);
+                if ($tok === '') continue;
+                $ex = ics_parse_dt($tok);
+                if ($ex['ts'] !== null) { $exdates[] = (int)$ex['ts']; }
+            }
+        }
         $norm[] = [
             'summary' => $summary,
             'description' => $desc,
@@ -67,6 +96,8 @@ function ics_parse_events(string $raw): array {
             'end_raw' => $endS,
             'start' => $start,
             'end' => $end,
+            'rrule' => $rrule,
+            'exdates' => $exdates,
         ];
     }
     // Sort by start
@@ -97,3 +128,144 @@ function ics_parse_dt(string $s): array {
     return ['ts' => null, 'display' => $s];
 }
 
+function ics_parse_rrule(string $s): array {
+    $out = [];
+    foreach (explode(';', trim($s)) as $part) {
+        if ($part === '') continue;
+        $kv = explode('=', $part, 2);
+        $k = strtoupper(trim($kv[0] ?? ''));
+        $v = trim($kv[1] ?? '');
+        if ($k === '') continue;
+        if (in_array($k, ['BYDAY','BYMONTHDAY','BYMONTH','BYHOUR','BYMINUTE','BYSECOND'], true)) {
+            $out[$k] = array_values(array_filter(array_map('trim', explode(',', $v)), fn($x) => $x !== ''));
+        } else {
+            $out[$k] = strtoupper($v);
+        }
+    }
+    return $out;
+}
+
+function ics_week_start_ts(int $ts, string $wkst, DateTimeZone $tz): int {
+    // wkst: two-letter like MO..SU; default MO
+    $wk = ['SU'=>0,'MO'=>1,'TU'=>2,'WE'=>3,'TH'=>4,'FR'=>5,'SA'=>6];
+    $wkst = strtoupper($wkst);
+    $wkStartDow = $wk[$wkst] ?? 1;
+    $d = (new DateTimeImmutable('@'.$ts))->setTimezone($tz)->setTime(0,0,0);
+    $dow = (int)$d->format('w'); // 0=Sun..6=Sat
+    $delta = ($dow - $wkStartDow + 7) % 7;
+    return $d->modify('-'.$delta.' days')->getTimestamp();
+}
+
+function ics_expand_events_in_range(string $raw, int $windowStart, int $windowEnd, ?DateTimeZone $tz = null): array {
+    $tz = $tz ?: new DateTimeZone(date_default_timezone_get());
+    $base = ics_parse_events($raw);
+    $out = [];
+    foreach ($base as $e) {
+        $startTs = $e['start']['ts'] ?? null;
+        if ($startTs === null) continue;
+        $endTs = $e['end']['ts'] ?? null;
+        $isAllDay = preg_match('/^\d{8}$/', (string)($e['start_raw'] ?? '')) === 1;
+        $duration = 0;
+        if ($endTs !== null) { $duration = max(0, (int)$endTs - (int)$startTs); }
+        else { $duration = $isAllDay ? 86400 : 3600; }
+
+        $rr = $e['rrule'] ?? [];
+        if (!$rr) {
+            // Non-recurring
+            if ($startTs >= $windowStart && $startTs <= $windowEnd) {
+                $e['all_day'] = $isAllDay;
+                $out[] = $e;
+            }
+            continue;
+        }
+
+        $freq = strtoupper((string)($rr['FREQ'] ?? ''));
+        $untilTs = null;
+        if (!empty($rr['UNTIL'] ?? '')) {
+            $pr = ics_parse_dt((string)$rr['UNTIL']);
+            $untilTs = $pr['ts'] ?? null;
+        }
+        $interval = max(1, (int)($rr['INTERVAL'] ?? 1));
+        $exdates = array_map('intval', $e['exdates'] ?? []);
+        $exSet = array_flip($exdates);
+
+        if ($freq === 'WEEKLY') {
+            $wkst = strtoupper((string)($rr['WKST'] ?? 'MO'));
+            $byday = $rr['BYDAY'] ?? [];
+            if (!$byday) {
+                $byday = [strtoupper((new DateTimeImmutable('@'.$startTs))->setTimezone($tz)->format('D'))];
+                // Map short to ICS two-letter
+                $map = ['SUN'=>'SU','MON'=>'MO','TUE'=>'TU','WED'=>'WE','THU'=>'TH','FRI'=>'FR','SAT'=>'SA'];
+                $byday = [$map[$byday[0]] ?? 'MO'];
+            }
+            $mapDow = ['SU'=>0,'MO'=>1,'TU'=>2,'WE'=>3,'TH'=>4,'FR'=>5,'SA'=>6];
+            $byNums = array_values(array_map(fn($d) => $mapDow[strtoupper(substr($d,-2))] ?? null, $byday));
+            $byNums = array_values(array_filter($byNums, fn($v)=>$v!==null));
+
+            $anchorWeekStart = ics_week_start_ts($startTs, $wkst, $tz);
+            // Iterate each day of window
+            for ($dayTs = $windowStart; $dayTs <= $windowEnd; $dayTs += 86400) {
+                $dLocal = (new DateTimeImmutable('@'.$dayTs))->setTimezone($tz)->setTime(0,0,0);
+                $dow = (int)$dLocal->format('w');
+                if (!in_array($dow, $byNums, true)) continue;
+                $curWeekStart = ics_week_start_ts($dayTs, $wkst, $tz);
+                $weeksDiff = intdiv(($curWeekStart - $anchorWeekStart), 7*86400);
+                if ($weeksDiff < 0 || ($weeksDiff % $interval) !== 0) continue;
+                // Instance start at base time
+                $baseLocal = (new DateTimeImmutable('@'.$startTs))->setTimezone($tz);
+                $instStart = $dLocal->setTime((int)$baseLocal->format('H'), (int)$baseLocal->format('i'), (int)$baseLocal->format('s'))->getTimestamp();
+                if ($instStart < $startTs) continue; // not before DTSTART
+                if ($untilTs !== null && $instStart > $untilTs) continue;
+                // Exdates: match exact timestamp; also try date-only match
+                $skip = false;
+                if (isset($exSet[$instStart])) { $skip = true; }
+                if (!$skip) {
+                    $instYmd = $dLocal->format('Ymd');
+                    foreach ($exdates as $ex) {
+                        $exYmd = (new DateTimeImmutable('@'.$ex))->setTimezone($tz)->format('Ymd');
+                        if ($exYmd === $instYmd) { $skip = true; break; }
+                    }
+                }
+                if ($skip) continue;
+
+                $inst = $e;
+                $inst['start'] = ['ts' => $instStart, 'display' => (new DateTimeImmutable('@'.$instStart))->setTimezone($tz)->format('Y-m-d H:i')];
+                $instEnd = $instStart + $duration;
+                $inst['end'] = ['ts' => $instEnd, 'display' => (new DateTimeImmutable('@'.$instEnd))->setTimezone($tz)->format('Y-m-d H:i')];
+                $inst['all_day'] = $isAllDay;
+                $out[] = $inst;
+            }
+            continue;
+        }
+
+        if ($freq === 'DAILY') {
+            $baseLocal = (new DateTimeImmutable('@'.$startTs))->setTimezone($tz);
+            // Find first occurrence not before windowStart
+            $first = max($startTs, $windowStart);
+            // Align to interval days from DTSTART
+            $daysDiff = intdiv(((int)floor(($first - $startTs)/86400)), 1);
+            $offsetDays = ($daysDiff % $interval === 0) ? 0 : ($interval - ($daysDiff % $interval));
+            for ($instStart = $startTs + ($daysDiff + $offsetDays)*86400; $instStart <= $windowEnd; $instStart += $interval*86400) {
+                if ($instStart < $windowStart) continue;
+                if ($untilTs !== null && $instStart > $untilTs) break;
+                // Exdate matches
+                if (isset($exSet[$instStart])) continue;
+                $inst = $e;
+                $inst['start'] = ['ts' => $instStart, 'display' => (new DateTimeImmutable('@'.$instStart))->setTimezone($tz)->format('Y-m-d H:i')];
+                $instEnd = $instStart + $duration;
+                $inst['end'] = ['ts' => $instEnd, 'display' => (new DateTimeImmutable('@'.$instEnd))->setTimezone($tz)->format('Y-m-d H:i')];
+                $inst['all_day'] = $isAllDay;
+                $out[] = $inst;
+            }
+            continue;
+        }
+
+        // For unsupported FREQ, include base only if in range
+        if ($startTs >= $windowStart && $startTs <= $windowEnd) {
+            $e['all_day'] = $isAllDay;
+            $out[] = $e;
+        }
+    }
+    usort($out, fn($a,$b) => ($a['start']['ts'] ?? 0) <=> ($b['start']['ts'] ?? 0));
+    return $out;
+}

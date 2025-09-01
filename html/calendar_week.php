@@ -61,7 +61,7 @@ $events = [];
 $err = null;
 try {
     $ics = fetch_url((string)$cal['url']);
-    $events = ics_parse_events($ics);
+    $events = ics_expand_events_in_range($ics, $weekStart->getTimestamp(), $weekEnd->getTimestamp(), $tz);
 } catch (Throwable $e) {
     $err = 'Failed to fetch or parse calendar.';
 }
@@ -75,7 +75,6 @@ for ($i=0; $i<7; $i++) {
 foreach ($events as $ev) {
     $ts = $ev['start']['ts'] ?? null;
     if ($ts === null) continue;
-    if ($ts < $weekStart->getTimestamp() || $ts > $weekEnd->getTimestamp()) continue;
     $key = (new DateTimeImmutable('@'.$ts))->setTimezone($tz)->format('Y-m-d');
     if (!isset($days[$key])) $days[$key] = [];
     $days[$key][] = $ev;
@@ -193,9 +192,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
               $dayStartTs = $d->getTimestamp();
               $allDay = []; $timed = [];
               foreach ($evs as $ev) {
-                $sr = $ev['start_raw'] ?? '';
-                $er = $ev['end_raw'] ?? '';
-                $isAll = (preg_match('/^\d{8}$/', (string)$sr) === 1);
+                $isAll = !empty($ev['all_day']);
                 if ($isAll) { $allDay[] = $ev; continue; }
                 $st = $ev['start']['ts'] ?? null; $et = $ev['end']['ts'] ?? null;
                 if ($st === null) continue;
