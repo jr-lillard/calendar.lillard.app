@@ -156,6 +156,19 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
     }
     return null;
 }
+
+function css_colors_from_hex(?string $hex): ?array {
+    if (!$hex) return null;
+    $hex = strtoupper($hex);
+    if (!preg_match('/^#([0-9A-F]{6})$/', $hex, $m)) return null;
+    $h = $m[1];
+    $r = hexdec(substr($h,0,2));
+    $g = hexdec(substr($h,2,2));
+    $b = hexdec(substr($h,4,2));
+    $bg = sprintf('rgba(%d,%d,%d,0.15)', $r,$g,$b);
+    $bd = sprintf('rgba(%d,%d,%d,0.6)', $r,$g,$b);
+    return ['bg'=>$bg,'bd'=>$bd];
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -335,7 +348,7 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
                 <div class="card-header bg-white day-header">
                   <div class="fw-semibold mb-1"><?= h($d->format('D M j')) ?></div>
                   <div class="all-day-row">
-                    <?php foreach ($allDay as $ev): ?>
+                    <?php foreach ($allDay as $ev): $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <?php 
                         $ageText = '';
                         $isHoliday = !empty($ev['is_holiday']);
@@ -346,7 +359,7 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
                           if (is_int($age) && $age >= 0) { $ageText = ' · ' . $age . ' yrs'; }
                         }
                       ?>
-                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' '.$ageText : '')) ?>">
+                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' '.$ageText : '')) ?>" style="<?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>">
                         <span class="fw-semibold all-day-title"><?= h($ev['summary'] ?: '(No title)') ?><?= h($ageText) ?></span>
                         <?php if (!empty($ev['location'])): ?>
                           <span class="text-muted">· <?= h($ev['location']) ?></span>
@@ -357,12 +370,13 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
                 </div>
                 <div class="day-body">
                   <div class="day-content">
-                    <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); ?>
+                    <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <div class="event-block" style="
                         top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60);
                         height: calc(<?= (int)$t['height_min'] ?> * var(--hour-height) / 60);
                         left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
                         width: calc((100% / <?= $cols ?>) - 8px);
+                        <?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>
                       " title="<?= h(($ev['summary'] ?? '') . ' — ' . $t['label_start'] . '–' . $t['label_end']) ?>">
                         <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
                         <div class="fw-semibold small event-title"><?= h($ev['summary'] ?: '(No title)') ?></div>

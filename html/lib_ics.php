@@ -66,6 +66,11 @@ function ics_parse_events(string $raw): array {
         $endTzid = (string)($ev['DTEND']['params']['TZID'] ?? '');
         $start = ics_parse_dt_with_tz($startS, $startTzid);
         $end = ics_parse_dt_with_tz($endS, $endTzid);
+        // Optional per‑event color (RFC 7986 COLOR). Accept hex only for safety.
+        $color = null;
+        if (!empty($ev['COLOR']['value'] ?? '')) {
+            $color = ics_sanitize_hex_color((string)$ev['COLOR']['value']);
+        }
         // Recurrence
         $rrule = [];
         if (!empty($ev['RRULE']['value'] ?? '')) {
@@ -100,6 +105,7 @@ function ics_parse_events(string $raw): array {
             'end' => $end,
             'rrule' => $rrule,
             'exdates' => $exdates,
+            'color' => $color,
         ];
     }
     // Sort by start
@@ -164,6 +170,20 @@ function ics_parse_dt_with_tz(string $s, ?string $tzid): array {
         }
     }
     return ['ts' => null, 'display' => $s];
+}
+
+function ics_sanitize_hex_color(string $s): ?string {
+    $s = trim($s);
+    // Allow forms like #RRGGBB, RRGGBB, #RGB, RGB
+    if (preg_match('/^#?([0-9A-Fa-f]{6})$/', $s, $m)) {
+        return '#'.strtoupper($m[1]);
+    }
+    if (preg_match('/^#?([0-9A-Fa-f]{3})$/', $s, $m)) {
+        // Expand short to long
+        $r = strtoupper($m[1][0]); $g = strtoupper($m[1][1]); $b = strtoupper($m[1][2]);
+        return '#'.$r.$r.$g.$g.$b.$b;
+    }
+    return null;
 }
 
 function ics_parse_rrule(string $s): array {
