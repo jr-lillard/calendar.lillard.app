@@ -69,6 +69,7 @@ function fetch_url(string $url): string {
       <div class="container">
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
         <div class="ms-auto d-flex gap-2">
+          <a class="btn btn-outline-primary" href="calendar_week.php?id=<?= (int)$cal['id'] ?>">Week View</a>
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
@@ -107,4 +108,3 @@ function fetch_url(string $url): string {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
   </html>
-
