@@ -117,7 +117,8 @@ function fmt_hour_label(int $h): string {
         align-items: stretch;
         height: 100%;
       }
-      .time-axis { position: relative; }
+      .time-axis { position: relative; display: grid; grid-template-rows: auto 1fr; }
+      .axis-header { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.075); }
       .axis-content {
         position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
         background: repeating-linear-gradient(to bottom,
@@ -183,6 +184,7 @@ function fmt_hour_label(int $h): string {
       <div class="week-scroll">
         <div class="week-grid">
           <div class="time-axis">
+            <div class="axis-header"></div>
             <div class="axis-content">
               <?php $startHour = 6; $endHour = 22; for ($h=$startHour; $h<=$endHour; $h++): ?>
                 <div class="axis-hour" style="top: calc(<?= (int)($h - $startHour) ?> * var(--hour-height));">
@@ -252,5 +254,30 @@ function fmt_hour_label(int $h): string {
       </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      (function(){
+        const startHour = 6, endHour = 22;
+        function layout() {
+          const headers = Array.from(document.querySelectorAll('.day-header'));
+          const axisHeader = document.querySelector('.axis-header');
+          const scroll = document.querySelector('.week-scroll');
+          if (!scroll || headers.length === 0) return;
+          // Equalize header heights across columns
+          let maxH = 0;
+          headers.forEach(h => { h.style.height = ''; maxH = Math.max(maxH, h.offsetHeight); });
+          headers.forEach(h => { h.style.height = maxH + 'px'; });
+          if (axisHeader) axisHeader.style.height = maxH + 'px';
+          // Compute hour height to fill remaining space
+          const avail = scroll.clientHeight - maxH; // px for hours grid
+          const hours = Math.max(1, endHour - startHour);
+          const perHour = Math.max(24, Math.floor(avail / hours));
+          document.documentElement.style.setProperty('--hour-height', perHour + 'px');
+        }
+        window.addEventListener('resize', layout);
+        document.addEventListener('DOMContentLoaded', layout);
+        // Also run once after a tick to account for fonts
+        setTimeout(layout, 50);
+      })();
+    </script>
   </body>
   </html>
