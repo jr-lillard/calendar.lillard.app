@@ -263,6 +263,45 @@ function ics_expand_events_in_range(string $raw, int $windowStart, int $windowEn
             continue;
         }
 
+        if ($freq === 'YEARLY') {
+            $baseLocal = (new DateTimeImmutable('@'.$startTs))->setTimezone($tz);
+            $startYear = (int)$baseLocal->format('Y');
+            $byMonth = array_map('intval', $rr['BYMONTH'] ?? []);
+            if (!$byMonth) { $byMonth = [(int)$baseLocal->format('n')]; }
+            $byMonthDay = array_map('intval', $rr['BYMONTHDAY'] ?? []);
+            if (!$byMonthDay) { $byMonthDay = [(int)$baseLocal->format('j')]; }
+
+            for ($dayTs = $windowStart; $dayTs <= $windowEnd; $dayTs += 86400) {
+                $dLocal = (new DateTimeImmutable('@'.$dayTs))->setTimezone($tz)->setTime(0,0,0);
+                $m = (int)$dLocal->format('n');
+                $dom = (int)$dLocal->format('j');
+                if (!in_array($m, $byMonth, true) || !in_array($dom, $byMonthDay, true)) continue;
+                $yearsDiff = (int)$dLocal->format('Y') - $startYear;
+                if ($yearsDiff < 0 || ($yearsDiff % $interval) !== 0) continue;
+                // Instance at base time or midnight for all-day
+                $instStart = $isAllDay
+                  ? $dLocal->getTimestamp()
+                  : $dLocal->setTime((int)$baseLocal->format('H'), (int)$baseLocal->format('i'), (int)$baseLocal->format('s'))->getTimestamp();
+                if ($instStart < $startTs) continue;
+                if ($untilTs !== null && $instStart > $untilTs) continue;
+                // EXDATE day match
+                $skip = false;
+                $instYmd = $dLocal->format('Ymd');
+                foreach ($exdates as $ex) {
+                    $exYmd = (new DateTimeImmutable('@'.$ex))->setTimezone($tz)->format('Ymd');
+                    if ($exYmd === $instYmd) { $skip = true; break; }
+                }
+                if ($skip) continue;
+                $inst = $e;
+                $inst['start'] = ['ts' => $instStart, 'display' => (new DateTimeImmutable('@'.$instStart))->setTimezone($tz)->format('Y-m-d H:i')];
+                $instEnd = $isAllDay ? ($instStart + 86400) : ($instStart + $duration);
+                $inst['end'] = ['ts' => $instEnd, 'display' => (new DateTimeImmutable('@'.$instEnd))->setTimezone($tz)->format('Y-m-d H:i')];
+                $inst['all_day'] = $isAllDay;
+                $out[] = $inst;
+            }
+            continue;
+        }
+
         // For unsupported FREQ, include base only if in range
         if ($startTs >= $windowStart && $startTs <= $windowEnd) {
             $e['all_day'] = $isAllDay;

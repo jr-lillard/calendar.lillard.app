@@ -89,6 +89,11 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
     if ($ts === null) return '';
     return (new DateTimeImmutable('@'.$ts))->setTimezone($tz)->format('g:ia');
 }
+function fmt_hour_label(int $h): string {
+    $ampm = $h >= 12 ? 'PM' : 'AM';
+    $h12 = $h % 12; if ($h12 === 0) $h12 = 12;
+    return $h12.' '.$ampm;
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -102,8 +107,9 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
+      .week-main { display: flex; flex-direction: column; min-height: 0; }
 
-      .week-scroll { overflow: auto; }
+      .week-scroll { overflow: auto; flex: 1 1 auto; min-height: 0; }
       .week-grid {
         display: grid;
         grid-template-columns: 60px repeat(7, minmax(180px, 1fr));
@@ -157,7 +163,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
         </div>
       </div>
     </nav>
-    <main class="container-fluid py-4">
+    <main class="container-fluid py-4 week-main">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h4 class="mb-0"><?= h($cal['name']) ?> · Week of <?= h($weekStart->format('M j, Y')) ?></h4>
@@ -180,7 +186,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
             <div class="axis-content">
               <?php $startHour = 6; $endHour = 22; for ($h=$startHour; $h<=$endHour; $h++): ?>
                 <div class="axis-hour" style="top: calc(<?= (int)($h - $startHour) ?> * var(--hour-height));">
-                  <?= h(str_pad((string)$h, 2, '0', STR_PAD_LEFT)) ?>:00
+                  <?= h(fmt_hour_label($h)) ?>
                 </div>
               <?php endfor; ?>
             </div>
