@@ -7,7 +7,9 @@ declare(strict_types=1);
 session_start();
 
 $submitted = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
-$email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
+$identifier = isset($_POST['identifier'])
+  ? trim((string)$_POST['identifier'])
+  : (isset($_POST['email']) ? trim((string)$_POST['email']) : '');
 $loginError = null;
 $loginOk = false;
 $dbReady = false;
@@ -30,12 +32,13 @@ if (file_exists($configPath)) {
 if ($submitted && $dbReady) {
     $password = (string)($_POST['password'] ?? '');
     try {
-        $stmt = $pdo->prepare('SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
+        $stmt = $pdo->prepare('SELECT id, email, username, password_hash FROM users WHERE email = ? OR username = ? LIMIT 1');
+        $stmt->execute([$identifier, $identifier]);
         $user = $stmt->fetch();
         if ($user && password_verify($password, (string)$user['password_hash'])) {
             $_SESSION['user_id'] = (int)$user['id'];
             $_SESSION['user_email'] = (string)$user['email'];
+            $_SESSION['user_username'] = isset($user['username']) ? (string)$user['username'] : null;
             $loginOk = true;
         } else {
             $loginError = 'Invalid email or password.';
@@ -73,7 +76,7 @@ if ($submitted && $dbReady) {
 
         <?php if ($loginOk): ?>
           <div class="alert alert-success" role="alert">
-            Signed in as <strong><?= h($_SESSION['user_email'] ?? $email) ?></strong>.
+            Signed in as <strong><?= h($_SESSION['user_username'] ?? $_SESSION['user_email'] ?? $identifier) ?></strong>.
           </div>
         <?php elseif ($submitted && $loginError): ?>
           <div class="alert alert-danger" role="alert">
@@ -85,19 +88,19 @@ if ($submitted && $dbReady) {
           <div class="card-body p-4">
             <form method="post" novalidate class="needs-validation" <?= $dbReady ? '' : 'aria-disabled="true"' ?> >
               <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
+                <label for="identifier" class="form-label">Email or Username</label>
                 <input
-                  type="email"
+                  type="text"
                   class="form-control"
-                  id="email"
-                  name="email"
-                  placeholder="you@example.com"
-                  value="<?= h($email) ?>"
+                  id="identifier"
+                  name="identifier"
+                  placeholder="you@example.com or username"
+                  value="<?= h($identifier) ?>"
                   required
-                  autocomplete="email"
-                  inputmode="email"
+                  autocomplete="username"
+                  inputmode="text"
                 >
-                <div class="invalid-feedback">Please enter a valid email.</div>
+                <div class="invalid-feedback">Please enter your email or username.</div>
               </div>
 
               <div class="mb-3">
