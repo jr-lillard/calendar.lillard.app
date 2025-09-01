@@ -213,8 +213,10 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
         padding: .25rem .4rem;
         overflow: hidden;
       }
+      .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
+      .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
     </style>
   </head>
   <body class="bg-light min-vh-100">
@@ -344,8 +346,8 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
                           if (is_int($age) && $age >= 0) { $ageText = ' · ' . $age . ' yrs'; }
                         }
                       ?>
-                      <div class="all-day-block">
-                        <span class="fw-semibold"><?= h($ev['summary'] ?: '(No title)') ?><?= h($ageText) ?></span>
+                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' '.$ageText : '')) ?>">
+                        <span class="fw-semibold all-day-title"><?= h($ev['summary'] ?: '(No title)') ?><?= h($ageText) ?></span>
                         <?php if (!empty($ev['location'])): ?>
                           <span class="text-muted">· <?= h($ev['location']) ?></span>
                         <?php endif; ?>
@@ -361,9 +363,9 @@ function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, Dat
                         height: calc(<?= (int)$t['height_min'] ?> * var(--hour-height) / 60);
                         left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
                         width: calc((100% / <?= $cols ?>) - 8px);
-                      ">
+                      " title="<?= h(($ev['summary'] ?? '') . ' — ' . $t['label_start'] . '–' . $t['label_end']) ?>">
                         <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
-                        <div class="fw-semibold small text-truncate"><?= h($ev['summary'] ?: '(No title)') ?></div>
+                        <div class="fw-semibold small event-title"><?= h($ev['summary'] ?: '(No title)') ?></div>
                         <?php if (!empty($ev['location'])): ?>
                           <div class="small text-muted text-truncate"><?= h($ev['location']) ?></div>
                         <?php endif; ?>
