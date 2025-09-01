@@ -257,6 +257,7 @@ function css_colors_from_hex(?string $hex): ?array {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
+          <a class="btn btn-outline-secondary" href="export_pdf.php?id=<?= (int)$id ?>&date=<?= h($base->format('Y-m-d')) ?>" target="_blank" rel="noopener">Download PDF</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
