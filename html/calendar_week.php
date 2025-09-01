@@ -233,18 +233,19 @@ function css_colors_from_hex(?string $hex): ?array {
 
       /* Print styles: landscape, start at grid, single page fit */
       @media print {
-        @page { size: landscape; margin: 10mm; }
+        @page { size: landscape; margin: 8mm; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
         .week-main { padding: 0 !important; }
-        .week-scroll { overflow: visible !important; }
-        /* Compress to fit */
-        :root { --hour-height: 16px; }
-        .week-grid { grid-template-columns: 40px repeat(7, minmax(120px, 1fr)); height: auto; page-break-inside: avoid; }
+        .week-scroll { overflow: visible !important; height: auto !important; }
+        /* Fit exactly one page: compute hour height from page height minus header */
+        :root { --print-day-header: 20mm; --hour-height: calc((100vh - var(--print-day-header)) / (var(--end-hour) - var(--start-hour))); }
+        .week-grid { grid-template-columns: 40px repeat(7, minmax(120px, 1fr)); height: 100vh !important; page-break-inside: avoid; }
+        .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
         .day-col { min-width: 120px; }
         .axis-hour { font-size: 0.65rem; }
-        .all-day-block { font-size: .75rem; }
+        .all-day-block { font-size: .72rem; }
         .event-block { padding: .2rem .3rem; }
       }
     </style>
