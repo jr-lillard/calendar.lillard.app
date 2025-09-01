@@ -98,17 +98,53 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      .week-scroll { overflow-x: auto; }
+      :root { --hour-height: 56px; }
+      html, body { height: 100%; }
+      body { display: flex; flex-direction: column; }
+      main { flex: 1 1 auto; min-height: 0; }
+
+      .week-scroll { overflow: auto; }
       .week-grid {
         display: grid;
-        grid-template-columns: repeat(7, minmax(220px, 1fr));
-        gap: 1rem;
+        grid-template-columns: 60px repeat(7, minmax(180px, 1fr));
+        gap: 0;
         align-items: stretch;
+        height: 100%;
       }
-      .day-col { min-width: 220px; }
-      .event-time { width: 72px; flex: 0 0 auto; }
-      .day-card { height: 100%; }
-      .day-header { position: sticky; top: 0; z-index: 1; }
+      .time-axis { position: relative; }
+      .axis-content {
+        position: relative; height: calc(var(--hour-height) * 24);
+        background: repeating-linear-gradient(to bottom,
+          rgba(0,0,0,0.06) 0,
+          rgba(0,0,0,0.06) 1px,
+          transparent 1px,
+          transparent var(--hour-height)
+        );
+      }
+      .axis-hour { position: absolute; left: 4px; font-size: 0.75rem; color: #6c757d; transform: translateY(-0.5em); }
+
+      .day-col { min-width: 180px; }
+      .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+      .day-header { position: sticky; top: 0; z-index: 1; background: #fff; }
+      .day-body { position: relative; height: 100%; }
+      .day-content {
+        position: relative; height: calc(var(--hour-height) * 24);
+        background: repeating-linear-gradient(to bottom,
+          rgba(0,0,0,0.06) 0,
+          rgba(0,0,0,0.06) 1px,
+          transparent 1px,
+          transparent var(--hour-height)
+        );
+      }
+      .event-block {
+        position: absolute; left: 6px; right: 6px;
+        background: rgba(13,110,253,0.15);
+        border: 1px solid rgba(13,110,253,0.5);
+        border-radius: .25rem;
+        padding: .25rem .4rem;
+        overflow: hidden;
+      }
+      .all-day-badge { display: inline-block; margin-right: .25rem; }
     </style>
   </head>
   <body class="bg-light min-vh-100">
@@ -140,34 +176,64 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
 
       <div class="week-scroll">
         <div class="week-grid">
-          <?php foreach ($days as $ymd => $evs): $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz); ?>
+          <div class="time-axis">
+            <div class="axis-content">
+              <?php for ($h=0; $h<24; $h++): ?>
+                <div class="axis-hour" style="top: calc(<?= (int)$h ?> * var(--hour-height));">
+                  <?= h(str_pad((string)$h, 2, '0', STR_PAD_LEFT)) ?>:00
+                </div>
+              <?php endfor; ?>
+            </div>
+          </div>
+          <?php
+            // Prepare day structures with all-day vs timed events and computed positions
+            $hourPx = 56; $pxPerMin = $hourPx/60.0;
+            foreach ($days as $ymd => $evs):
+              $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz);
+              $dayStartTs = $d->getTimestamp();
+              $allDay = []; $timed = [];
+              foreach ($evs as $ev) {
+                $sr = $ev['start_raw'] ?? '';
+                $er = $ev['end_raw'] ?? '';
+                $isAll = (preg_match('/^\d{8}$/', (string)$sr) === 1);
+                if ($isAll) { $allDay[] = $ev; continue; }
+                $st = $ev['start']['ts'] ?? null; $et = $ev['end']['ts'] ?? null;
+                if ($st === null) continue;
+                $stLocal = (new DateTimeImmutable('@'.$st))->setTimezone($tz)->getTimestamp();
+                $etLocal = $et !== null ? (new DateTimeImmutable('@'.$et))->setTimezone($tz)->getTimestamp() : $stLocal + 3600;
+                // Clamp to day bounds
+                $startMin = max(0, (int)floor(($stLocal - $dayStartTs)/60));
+                $endMin = min(24*60, max($startMin+15, (int)ceil(($etLocal - $dayStartTs)/60)));
+                $timed[] = [
+                  'ev' => $ev,
+                  'top' => (int)round($startMin * $pxPerMin),
+                  'height' => (int)max(6, round(($endMin - $startMin) * $pxPerMin)),
+                  'label_time' => fmt_time($stLocal, $tz),
+                ];
+              }
+          ?>
             <div class="day-col">
               <div class="card shadow-sm day-card">
                 <div class="card-header bg-white day-header">
-                  <div class="fw-semibold">
-                    <?= h($d->format('D M j')) ?>
+                  <div class="fw-semibold d-flex flex-wrap align-items-center gap-1">
+                    <span><?= h($d->format('D M j')) ?></span>
+                    <?php foreach ($allDay as $ev): ?>
+                      <span class="badge text-bg-primary all-day-badge"><?= h($ev['summary'] ?: 'All day') ?></span>
+                    <?php endforeach; ?>
                   </div>
                 </div>
-                <div class="card-body p-2">
-                  <?php if (!$evs): ?>
-                    <div class="text-muted small">No events</div>
-                  <?php else: ?>
-                    <div class="list-group list-group-flush">
-                      <?php foreach ($evs as $ev): ?>
-                        <div class="list-group-item p-2 d-flex gap-2 align-items-start">
-                          <div class="event-time text-muted small">
-                            <?= h(fmt_time($ev['start']['ts'] ?? null, $tz)) ?>
-                          </div>
-                          <div>
-                            <div class="fw-semibold small"><?= h($ev['summary'] ?: '(No title)') ?></div>
-                            <?php if (!empty($ev['location'])): ?>
-                              <div class="small text-muted"><?= h($ev['location']) ?></div>
-                            <?php endif; ?>
-                          </div>
-                        </div>
-                      <?php endforeach; ?>
-                    </div>
-                  <?php endif; ?>
+                <div class="day-body">
+                  <div class="day-content">
+                    <?php foreach ($timed as $t): $ev = $t['ev']; ?>
+                      <div class="event-block" style="top: <?= (int)$t['top'] ?>px; height: <?= (int)$t['height'] ?>px;">
+                        <div class="small text-muted"><?= h($t['label_time']) ?></div>
+                        <div class="fw-semibold small text-truncate"><?= h($ev['summary'] ?: '(No title)') ?></div>
+                        <?php if (!empty($ev['location'])): ?>
+                          <div class="small text-muted text-truncate"><?= h($ev['location']) ?></div>
+                        <?php endif; ?>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
                 </div>
               </div>
             </div>
