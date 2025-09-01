@@ -9,6 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
 $config = require __DIR__.'/config.php';
+if (!empty($config['timezone'])) { @date_default_timezone_set((string)$config['timezone']); }
 $pdo = new PDO($config['db_dsn'], $config['db_user'], $config['db_pass'], $config['db_opts'] ?? []);
 $uid = (int)$_SESSION['user_id'];
 $error = null; $info = null;
@@ -117,4 +118,3 @@ $cals = $res->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
   </html>
-

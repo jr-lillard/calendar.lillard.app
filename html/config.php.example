@@ -8,6 +8,8 @@ return [
     'db_dsn'  => 'mysql:host=localhost;dbname=calendar_dev;charset=utf8mb4',
     'db_user' => 'calendar_app',
     'db_pass' => 'CHANGE_ME',
+    // Display timezone (e.g., 'America/Chicago' for CST/CDT)
+    'timezone' => 'America/Chicago',
     // PDO options
     'db_opts' => [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -15,4 +17,3 @@ return [
         PDO::ATTR_EMULATE_PREPARES   => false,
     ],
 ];
-

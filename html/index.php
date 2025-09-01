@@ -21,6 +21,9 @@ $config = null;
 $pdo = null;
 if (file_exists($configPath)) {
     $config = require $configPath;
+    if (!empty($config['timezone'])) {
+        @date_default_timezone_set((string)$config['timezone']);
+    }
     try {
         $pdo = new PDO($config['db_dsn'], $config['db_user'], $config['db_pass'], $config['db_opts'] ?? []);
         $dbReady = true;

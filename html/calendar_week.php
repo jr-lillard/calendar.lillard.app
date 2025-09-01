@@ -29,6 +29,7 @@ function fetch_url(string $url): string {
 }
 
 $config = require __DIR__.'/config.php';
+if (!empty($config['timezone'])) { @date_default_timezone_set((string)$config['timezone']); }
 $pdo = new PDO($config['db_dsn'], $config['db_user'], $config['db_pass'], $config['db_opts'] ?? []);
 $uid = (int)$_SESSION['user_id'];
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -160,7 +161,7 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h4 class="mb-0"><?= h($cal['name']) ?> · Week of <?= h($weekStart->format('M j, Y')) ?></h4>
-          <div class="text-muted small">Timezone: <?= h($tz->getName()) ?></div>
+          <div class="text-muted small">Timezone: <?= h($tz->getName()) ?> (<?= h((new DateTimeImmutable('now', $tz))->format('T')) ?>)</div>
         </div>
         <div class="btn-group">
           <a class="btn btn-outline-primary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($prevDate) ?>">← Previous</a>

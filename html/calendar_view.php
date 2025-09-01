@@ -6,6 +6,7 @@ require __DIR__.'/lib_ics.php';
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
 $config = require __DIR__.'/config.php';
+if (!empty($config['timezone'])) { @date_default_timezone_set((string)$config['timezone']); }
 $pdo = new PDO($config['db_dsn'], $config['db_user'], $config['db_pass'], $config['db_opts'] ?? []);
 $uid = (int)$_SESSION['user_id'];
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -77,7 +78,7 @@ function fetch_url(string $url): string {
     </nav>
     <main class="container py-4">
       <h3 class="mb-3"><?= h($cal['name']) ?></h3>
-      <p class="text-muted small">Source: <a href="<?= h($cal['url']) ?>" target="_blank" rel="noopener noreferrer"><?= h($cal['url']) ?></a></p>
+      <p class="text-muted small">Source: <a href="<?= h($cal['url']) ?>" target="_blank" rel="noopener noreferrer"><?= h($cal['url']) ?></a> · Timezone: <?= h((new DateTimeZone(date_default_timezone_get()))->getName()) ?> (<?= h((new DateTimeImmutable('now'))->format('T')) ?>)</p>
       <?php if ($err): ?>
         <div class="alert alert-danger"><?= h($err) ?></div>
       <?php elseif (!$filtered): ?>

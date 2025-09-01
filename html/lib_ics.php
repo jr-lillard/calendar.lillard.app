@@ -112,7 +112,10 @@ function ics_parse_dt(string $s): array {
     try {
         if (str_ends_with($s, 'Z')) {
             $dt = DateTimeImmutable::createFromFormat('Ymd\THis\Z', $s, new DateTimeZone('UTC'));
-            if ($dt) return ['ts' => $dt->getTimestamp(), 'display' => $dt->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i') . ' UTC'];
+            if ($dt) {
+                $local = $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+                return ['ts' => $dt->getTimestamp(), 'display' => $local->format('Y-m-d H:i')];
+            }
         }
         if (preg_match('/^\d{8}T\d{6}$/', $s)) {
             $dt = DateTimeImmutable::createFromFormat('Ymd\THis', $s);
