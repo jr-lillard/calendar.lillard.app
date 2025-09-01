@@ -39,7 +39,11 @@ if ($submitted && $dbReady) {
             $_SESSION['user_id'] = (int)$user['id'];
             $_SESSION['user_email'] = (string)$user['email'];
             $_SESSION['user_username'] = isset($user['username']) ? (string)$user['username'] : null;
-            $loginOk = true;
+            if (PHP_SESSION_ACTIVE === session_status()) {
+                session_regenerate_id(true);
+            }
+            header('Location: dashboard.php');
+            exit;
         } else {
             $loginError = 'Invalid email or password.';
         }
@@ -74,11 +78,7 @@ if ($submitted && $dbReady) {
           </div>
         <?php endif; ?>
 
-        <?php if ($loginOk): ?>
-          <div class="alert alert-success" role="alert">
-            Signed in as <strong><?= h($_SESSION['user_username'] ?? $_SESSION['user_email'] ?? $identifier) ?></strong>.
-          </div>
-        <?php elseif ($submitted && $loginError): ?>
+        <?php if ($submitted && $loginError): ?>
           <div class="alert alert-danger" role="alert">
             <?= h($loginError) ?>
           </div>
@@ -86,6 +86,7 @@ if ($submitted && $dbReady) {
 
         <div class="card shadow-sm">
           <div class="card-body p-4">
+            <?php if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; } ?>
             <form method="post" novalidate class="needs-validation" <?= $dbReady ? '' : 'aria-disabled="true"' ?> >
               <div class="mb-3">
                 <label for="identifier" class="form-label">Email or Username</label>
