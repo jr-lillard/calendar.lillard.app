@@ -117,7 +117,7 @@ function fmt_hour_label(int $h): string {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 6; --end-hour: 24; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 23; }
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -201,7 +201,7 @@ function fmt_hour_label(int $h): string {
           <div class="time-axis">
             <div class="axis-header"></div>
             <div class="axis-content">
-              <?php $startHour = 6; $endHour = 24; for ($h=$startHour; $h<=$endHour; $h++): ?>
+              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
                 <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 1px);">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
@@ -210,7 +210,7 @@ function fmt_hour_label(int $h): string {
           </div>
           <?php
             // Prepare day structures with all-day vs timed events and computed positions
-            $startHour = 6; $endHour = 24;
+            $startHour = 7; $endHour = 23;
             foreach ($days as $ymd => $evs):
               $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz);
               $dayStartTs = $d->getTimestamp();
@@ -322,7 +322,7 @@ function fmt_hour_label(int $h): string {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       (function(){
-        const startHour = 6, endHour = 24;
+        const startHour = 7, endHour = 23;
         function layout() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
           const axisHeader = document.querySelector('.axis-header');
