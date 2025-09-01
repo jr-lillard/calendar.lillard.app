@@ -98,8 +98,17 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+      .week-scroll { overflow-x: auto; }
+      .week-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(220px, 1fr));
+        gap: 1rem;
+        align-items: stretch;
+      }
       .day-col { min-width: 220px; }
       .event-time { width: 72px; flex: 0 0 auto; }
+      .day-card { height: 100%; }
+      .day-header { position: sticky; top: 0; z-index: 1; }
     </style>
   </head>
   <body class="bg-light">
@@ -129,42 +138,43 @@ function fmt_time(?int $ts, DateTimeZone $tz): string {
         <div class="alert alert-danger"><?= h($err) ?></div>
       <?php endif; ?>
 
-      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 row-cols-xl-7 g-3">
-        <?php $i=0; foreach ($days as $ymd => $evs): $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz); ?>
-          <div class="col">
-            <div class="card h-100 shadow-sm day-col">
-              <div class="card-header bg-white">
-                <div class="fw-semibold">
-                  <?= h($d->format('D M j')) ?>
+      <div class="week-scroll">
+        <div class="week-grid">
+          <?php foreach ($days as $ymd => $evs): $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz); ?>
+            <div class="day-col">
+              <div class="card shadow-sm day-card">
+                <div class="card-header bg-white day-header">
+                  <div class="fw-semibold">
+                    <?= h($d->format('D M j')) ?>
+                  </div>
+                </div>
+                <div class="card-body p-2">
+                  <?php if (!$evs): ?>
+                    <div class="text-muted small">No events</div>
+                  <?php else: ?>
+                    <div class="list-group list-group-flush">
+                      <?php foreach ($evs as $ev): ?>
+                        <div class="list-group-item p-2 d-flex gap-2 align-items-start">
+                          <div class="event-time text-muted small">
+                            <?= h(fmt_time($ev['start']['ts'] ?? null, $tz)) ?>
+                          </div>
+                          <div>
+                            <div class="fw-semibold small"><?= h($ev['summary'] ?: '(No title)') ?></div>
+                            <?php if (!empty($ev['location'])): ?>
+                              <div class="small text-muted"><?= h($ev['location']) ?></div>
+                            <?php endif; ?>
+                          </div>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php endif; ?>
                 </div>
               </div>
-              <div class="card-body p-2">
-                <?php if (!$evs): ?>
-                  <div class="text-muted small">No events</div>
-                <?php else: ?>
-                  <div class="list-group list-group-flush">
-                    <?php foreach ($evs as $ev): ?>
-                      <div class="list-group-item p-2 d-flex gap-2 align-items-start">
-                        <div class="event-time text-muted small">
-                          <?= h(fmt_time($ev['start']['ts'] ?? null, $tz)) ?>
-                        </div>
-                        <div>
-                          <div class="fw-semibold small"><?= h($ev['summary'] ?: '(No title)') ?></div>
-                          <?php if (!empty($ev['location'])): ?>
-                            <div class="small text-muted"><?= h($ev['location']) ?></div>
-                          <?php endif; ?>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  </div>
-                <?php endif; ?>
-              </div>
             </div>
-          </div>
-        <?php $i++; endforeach; ?>
+          <?php endforeach; ?>
+        </div>
       </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
   </html>
-
