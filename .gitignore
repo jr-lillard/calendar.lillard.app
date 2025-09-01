@@ -2,3 +2,6 @@
 AGENTS.md
 HISTORY.md.d/
 sessions/
+
+# Local secrets (not committed)
+html/config.php

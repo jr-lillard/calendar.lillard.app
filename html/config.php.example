@@ -1,0 +1,18 @@
+<?php
+declare(strict_types=1);
+
+// Copy this file to config.php and fill in real credentials.
+// Do NOT commit config.php (it is git-ignored).
+
+return [
+    'db_dsn'  => 'mysql:host=localhost;dbname=calendar_dev;charset=utf8mb4',
+    'db_user' => 'calendar_app',
+    'db_pass' => 'CHANGE_ME',
+    // PDO options
+    'db_opts' => [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ],
+];
+

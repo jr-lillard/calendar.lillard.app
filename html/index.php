@@ -1,13 +1,49 @@
 <?php
 declare(strict_types=1);
 
-// Simple mobile-first Bootstrap login template.
-// NOTE: This page provides UI only. Hook up real auth on server.
+// Mobile-first Bootstrap login with MySQL (PDO) backend.
+// Credentials live in html/config.php (git-ignored). See config.php.example.
+
+session_start();
 
 $submitted = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
 $email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
+$loginError = null;
+$loginOk = false;
+$dbReady = false;
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+
+$configPath = __DIR__ . '/config.php';
+$config = null;
+$pdo = null;
+if (file_exists($configPath)) {
+    $config = require $configPath;
+    try {
+        $pdo = new PDO($config['db_dsn'], $config['db_user'], $config['db_pass'], $config['db_opts'] ?? []);
+        $dbReady = true;
+    } catch (Throwable $e) {
+        $loginError = 'Database connection failed. Please try again later.';
+    }
+}
+
+if ($submitted && $dbReady) {
+    $password = (string)($_POST['password'] ?? '');
+    try {
+        $stmt = $pdo->prepare('SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1');
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        if ($user && password_verify($password, (string)$user['password_hash'])) {
+            $_SESSION['user_id'] = (int)$user['id'];
+            $_SESSION['user_email'] = (string)$user['email'];
+            $loginOk = true;
+        } else {
+            $loginError = 'Invalid email or password.';
+        }
+    } catch (Throwable $e) {
+        $loginError = 'Login failed. Please try again.';
+    }
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -29,15 +65,25 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
           <div class="text-muted">Sign in to continue</div>
         </div>
 
-        <?php if ($submitted): ?>
-          <div class="alert alert-info" role="alert">
-            Submitted login for <strong><?= $email ? h($email) : 'user' ?></strong>. Replace with real authentication.
+        <?php if (!$dbReady): ?>
+          <div class="alert alert-warning" role="alert">
+            Missing or invalid configuration. Add <code>html/config.php</code> based on <code>config.php.example</code>.
+          </div>
+        <?php endif; ?>
+
+        <?php if ($loginOk): ?>
+          <div class="alert alert-success" role="alert">
+            Signed in as <strong><?= h($_SESSION['user_email'] ?? $email) ?></strong>.
+          </div>
+        <?php elseif ($submitted && $loginError): ?>
+          <div class="alert alert-danger" role="alert">
+            <?= h($loginError) ?>
           </div>
         <?php endif; ?>
 
         <div class="card shadow-sm">
           <div class="card-body p-4">
-            <form method="post" novalidate class="needs-validation">
+            <form method="post" novalidate class="needs-validation" <?= $dbReady ? '' : 'aria-disabled="true"' ?> >
               <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input
@@ -107,4 +153,3 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
     </script>
   </body>
   </html>
-
