@@ -108,6 +108,54 @@ function fmt_hour_label(int $h): string {
     if ($hm === 0) $ampm = 'AM';
     return $h12.' '.$ampm;
 }
+
+function parse_birthdate_from_description(?string $desc, DateTimeZone $tz): array {
+    $desc = (string)$desc;
+    if ($desc === '') return ['date' => null, 'year' => null];
+    // ISO YYYY-MM-DD near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})-(\d{2})-(\d{2})\b/i', $desc, $m)) {
+        $y = (int)$m[2]; $mo = (int)$m[3]; $d = (int)$m[4];
+        try { return ['date' => new DateTimeImmutable(sprintf('%04d-%02d-%02d', $y,$mo,$d), $tz), 'year' => $y]; } catch (Throwable $e) {}
+    }
+    // US MM/DD/YYYY near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i', $desc, $m)) {
+        $mo = (int)$m[2]; $d = (int)$m[3]; $y = (int)$m[4];
+        try { return ['date' => new DateTimeImmutable(sprintf('%04d-%02d-%02d', $y,$mo,$d), $tz), 'year' => $y]; } catch (Throwable $e) {}
+    }
+    // Month name D, YYYY near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^A-Za-z]{0,10}((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*)\s+(\d{1,2}),?\s+(\d{4})/i', $desc, $m)) {
+        $mon = strtolower($m[2]); $d = (int)$m[4]; $y = (int)$m[5];
+        $map = ['jan'=>1,'feb'=>2,'mar'=>3,'apr'=>4,'may'=>5,'jun'=>6,'jul'=>7,'aug'=>8,'sep'=>9,'sept'=>9,'oct'=>10,'nov'=>11,'dec'=>12];
+        $mo = $map[substr($mon,0,4)] ?? ($map[substr($mon,0,3)] ?? null);
+        if ($mo) {
+            try { return ['date' => new DateTimeImmutable(sprintf('%04d-%02d-%02d', $y,$mo,$d), $tz), 'year' => $y]; } catch (Throwable $e) {}
+        }
+    }
+    // Fallback: just a year near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})\b/i', $desc, $m)) {
+        $y = (int)$m[2];
+        if ($y >= 1900 && $y <= 3000) return ['date' => null, 'year' => $y];
+    }
+    return ['date' => null, 'year' => null];
+}
+
+function compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, DateTimeImmutable $onDay): ?int {
+    if ($birthDate instanceof DateTimeImmutable) {
+        $y = (int)$onDay->format('Y');
+        $m = (int)$onDay->format('n');
+        $d = (int)$onDay->format('j');
+        $by = (int)$birthDate->format('Y');
+        $bm = (int)$birthDate->format('n');
+        $bd = (int)$birthDate->format('j');
+        $age = $y - $by;
+        if ($m < $bm || ($m === $bm && $d < $bd)) $age--;
+        return $age;
+    }
+    if (is_int($birthYear)) {
+        return max(0, (int)$onDay->format('Y') - $birthYear);
+    }
+    return null;
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -286,8 +334,18 @@ function fmt_hour_label(int $h): string {
                   <div class="fw-semibold mb-1"><?= h($d->format('D M j')) ?></div>
                   <div class="all-day-row">
                     <?php foreach ($allDay as $ev): ?>
+                      <?php 
+                        $ageText = '';
+                        $isHoliday = !empty($ev['is_holiday']);
+                        $summaryLC = strtolower((string)($ev['summary'] ?? ''));
+                        if (!$isHoliday && (str_contains($summaryLC, 'birthday') || str_contains($summaryLC, "b-day") || str_contains($summaryLC, "bday"))) {
+                          $bd = parse_birthdate_from_description($ev['description'] ?? '', $tz);
+                          $age = compute_age_for_day($bd['date'], $bd['year'], $d);
+                          if (is_int($age) && $age >= 0) { $ageText = ' · ' . $age . ' yrs'; }
+                        }
+                      ?>
                       <div class="all-day-block">
-                        <span class="fw-semibold"><?= h($ev['summary'] ?: '(No title)') ?></span>
+                        <span class="fw-semibold"><?= h($ev['summary'] ?: '(No title)') ?><?= h($ageText) ?></span>
                         <?php if (!empty($ev['location'])): ?>
                           <span class="text-muted">· <?= h($ev['location']) ?></span>
                         <?php endif; ?>
