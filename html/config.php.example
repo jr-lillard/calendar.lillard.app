@@ -16,4 +16,9 @@ return [
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,
     ],
+    // Optional: public holidays ICS to overlay on week view
+    // Example (US Holidays):
+    // 'holiday_ics' => 'https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics',
+    'holiday_ics' => null,
+    'holiday_name' => 'Holidays',
 ];

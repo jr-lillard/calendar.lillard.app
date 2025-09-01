@@ -63,6 +63,17 @@ $err = null;
 try {
     $ics = fetch_url((string)$cal['url']);
     $events = ics_expand_events_in_range($ics, $weekStart->getTimestamp(), $weekEnd->getTimestamp(), $tz);
+    // Optional holidays overlay
+    if (!empty($config['holiday_ics'])) {
+        try {
+            $hics = fetch_url((string)$config['holiday_ics']);
+            $hevents = ics_expand_events_in_range($hics, $weekStart->getTimestamp(), $weekEnd->getTimestamp(), $tz);
+            // Tag holidays for styling
+            foreach ($hevents as &$hv) { $hv['is_holiday'] = true; }
+            unset($hv);
+            $events = array_merge($events, $hevents);
+        } catch (Throwable $e) { /* ignore holiday fetch errors */ }
+    }
 } catch (Throwable $e) {
     $err = 'Failed to fetch or parse calendar.';
 }
@@ -226,8 +237,48 @@ function fmt_hour_label(int $h): string {
                   'height_min' => max(6, ($clipEnd - $clipStart)),
                   'label_start' => $stDT->format('g:ia'),
                   'label_end' => $etDT->format('g:ia'),
+                  'start_min' => $startMin,
+                  'end_min' => $endMin,
                 ];
               }
+              // Compute overlap columns for timed events
+              usort($timed, function($a,$b){ return $a['start_min'] <=> $b['start_min'] ?: $a['end_min'] <=> $b['end_min']; });
+              $clusterStart = 0; $clusterEnd = -1; $clusterItems = [];
+              $finalTimed = [];
+              $assignCluster = function(array $cluster) use (&$finalTimed) {
+                  if (!$cluster) return;
+                  // Column assignment within cluster
+                  // active columns: array colIndex => end_min
+                  $active = [];
+                  $maxCols = 0;
+                  foreach ($cluster as $idx => $t) {
+                      // free columns whose end <= start
+                      foreach ($active as $ci => $eend) { if ($eend <= $t['start_min']) unset($active[$ci]); }
+                      // find first free col
+                      $col = 0; while (array_key_exists($col, $active)) { $col++; }
+                      $t['col'] = $col; $active[$col] = $t['end_min'];
+                      $maxCols = max($maxCols, $col+1);
+                      $cluster[$idx] = $t;
+                      $finalTimed[] = $t; // temp push; we'll update widths next
+                  }
+                  // Update widths for last pushed items of this cluster
+                  $n = count($cluster);
+                  for ($i = count($finalTimed)-$n; $i < count($finalTimed); $i++) {
+                      if ($i < 0) continue;
+                      $finalTimed[$i]['cols'] = $maxCols;
+                  }
+              };
+              foreach ($timed as $t) {
+                  if ($t['start_min'] >= $clusterEnd) {
+                      // close previous cluster
+                      $assignCluster($clusterItems);
+                      $clusterItems = []; $clusterEnd = -1;
+                  }
+                  $clusterItems[] = $t;
+                  $clusterEnd = max($clusterEnd, $t['end_min']);
+              }
+              $assignCluster($clusterItems);
+              $timed = $finalTimed;
           ?>
             <div class="day-col">
               <div class="card shadow-sm day-card">
@@ -246,8 +297,13 @@ function fmt_hour_label(int $h): string {
                 </div>
                 <div class="day-body">
                   <div class="day-content">
-                    <?php foreach ($timed as $t): $ev = $t['ev']; ?>
-                      <div class="event-block" style="top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60); height: calc(<?= (int)$t['height_min'] ?> * var(--hour-height) / 60);">
+                    <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); ?>
+                      <div class="event-block" style="
+                        top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60);
+                        height: calc(<?= (int)$t['height_min'] ?> * var(--hour-height) / 60);
+                        left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
+                        width: calc((100% / <?= $cols ?>) - 8px);
+                      ">
                         <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
                         <div class="fw-semibold small text-truncate"><?= h($ev['summary'] ?: '(No title)') ?></div>
                         <?php if (!empty($ev['location'])): ?>
