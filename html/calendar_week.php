@@ -306,6 +306,9 @@ function css_colors_from_hex(?string $hex): ?array {
             <div class="axis-header"></div>
             <div class="axis-content">
               <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
+                <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
+              <?php endfor; ?>
+              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
                 <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 1px);">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
@@ -411,6 +414,9 @@ function css_colors_from_hex(?string $hex): ?array {
                 </div>
                 <div class="day-body">
                   <div class="day-content">
+                    <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
+                      <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
+                    <?php endfor; ?>
                     <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <div class="event-block" style="
                         top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60);
