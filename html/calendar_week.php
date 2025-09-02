@@ -256,10 +256,9 @@ function css_colors_from_hex(?string $hex): ?array {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           /* subtract border + safety to avoid a second page */
-          --safety: 6px;
+          --safety: 14px; /* increased safety to prevent page 2 */
           --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
           --bleed-right: 1.0in;  /* extend right edge to fill preview */
-          --bleed-bottom: 0in;   /* ensure single page height */
           --print-day-header: 1.1in;
           --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
         }
@@ -329,8 +328,8 @@ function css_colors_from_hex(?string $hex): ?array {
                   <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 2px);">
                     <?= h(fmt_hour_label($h)) ?>
                   </div>
-                <?php else: /* last label (11 PM) – anchor to bottom so it always shows */ ?>
-                  <div class="axis-hour" style="bottom: 2px; transform: none;">
+                <?php else: /* last label (11 PM) – position just above the bottom boundary line */ ?>
+                  <div class="axis-hour" style="top: calc(((<?= (int)($endHour - $startHour) ?> * var(--hour-height)) - 0.8em));">
                     <?= h(fmt_hour_label($h)) ?>
                   </div>
                 <?php endif; ?>
@@ -439,6 +438,8 @@ function css_colors_from_hex(?string $hex): ?array {
                     <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
                       <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
                     <?php endfor; ?>
+                    <!-- bottom boundary line for 11 PM -->
+                    <div class="hour-line" style="bottom: 0;"></div>
                     <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <div class="event-block" style="
                         top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60);
