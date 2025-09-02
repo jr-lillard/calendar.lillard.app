@@ -196,9 +196,11 @@ function css_colors_from_hex(?string $hex): ?array {
       .axis-header { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.075); }
       .axis-content {
         position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
-        background: repeating-linear-gradient(to bottom,
-          rgba(0,0,0,0.06) 0,
-          rgba(0,0,0,0.06) 1px,
+        background-color: #fff;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.12) 0,
+          rgba(0,0,0,0.12) 1px,
           transparent 1px,
           transparent var(--hour-height)
         );
@@ -211,9 +213,11 @@ function css_colors_from_hex(?string $hex): ?array {
       .day-body { position: relative; height: 100%; }
       .day-content {
         position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
-        background: repeating-linear-gradient(to bottom,
-          rgba(0,0,0,0.06) 0,
-          rgba(0,0,0,0.06) 1px,
+        background-color: #fff;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          rgba(0,0,0,0.12) 0,
+          rgba(0,0,0,0.12) 1px,
           transparent 1px,
           transparent var(--hour-height)
         );
@@ -237,6 +241,10 @@ function css_colors_from_hex(?string $hex): ?array {
         @page { size: 11in 8.5in; margin: 0.4in; }
         html, body { width: 11in; height: 8.5in; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html, body, .week-grid, .day-card, .axis-content, .day-content { background-color: #fff !important; }
+        /* Sharper grid lines for print */
+        .axis-content { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.4) 0, rgba(0,0,0,0.4) 1px, transparent 1px, transparent var(--hour-height)) !important; }
+        .day-content { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.4) 0, rgba(0,0,0,0.4) 1px, transparent 1px, transparent var(--hour-height)) !important; }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
         .week-main { padding: 0 !important; width: var(--grid-w) !important; margin: 0 auto !important; }
