@@ -231,6 +231,7 @@ function css_colors_from_hex(?string $hex): ?array {
         overflow: hidden;
       }
       .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+      .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
@@ -240,6 +241,7 @@ function css_colors_from_hex(?string $hex): ?array {
         /* Target Letter landscape; restore standard margins */
         @page { size: 11in 8.5in; margin: 0.4in; }
         html, body { width: 11in; height: 8.5in; }
+        * { box-shadow: none !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* Force white backgrounds and remove any background images */
         html, body, .week-grid, .day-card, .axis-content, .day-content, .day-col, .time-axis, .day-body, .card, .card-body {
@@ -268,8 +270,9 @@ function css_colors_from_hex(?string $hex): ?array {
         /* Remove tinted event backgrounds for print */
         .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
         .axis-hour { font-size: 0.65rem; }
-        .all-day-block { font-size: .72rem; }
-        .event-block { padding: .18rem .28rem; }
+        .all-day-block { font-size: .65rem; line-height: 1.1; }
+        .all-day-title { font-size: .65rem; line-height: 1.1; }
+        .event-block { padding: .16rem .24rem; font-size: .7rem; }
       }
     </style>
   </head>
@@ -280,7 +283,6 @@ function css_colors_from_hex(?string $hex): ?array {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <a class="btn btn-outline-secondary" href="export_pdf.php?id=<?= (int)$id ?>&date=<?= h($base->format('Y-m-d')) ?>" target="_blank" rel="noopener">Download PDF</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
