@@ -256,7 +256,7 @@ function css_colors_from_hex(?string $hex): ?array {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           --grid-h: calc(var(--page-h) - 2 * var(--m));
-          --print-day-header: 0.9in;
+          --print-day-header: 1.1in;
           --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
         }
         .week-grid {
@@ -266,6 +266,9 @@ function css_colors_from_hex(?string $hex): ?array {
           page-break-inside: avoid;
         }
         .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
+        .container-fluid, .week-main, .week-scroll, .week-grid { padding: 0 !important; margin: 0 !important; }
+        .card, .day-card { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+        .hour-line { border-top-color: rgba(0,0,0,0.6) !important; }
         .day-col { min-width: 0; }
         /* Remove tinted event backgrounds for print */
         .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
