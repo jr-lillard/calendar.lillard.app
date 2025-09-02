@@ -270,9 +270,12 @@ function css_colors_from_hex(?string $hex): ?array {
         .card, .day-card { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
         .hour-line { border-top-color: rgba(0,0,0,0.6) !important; }
         .day-col { min-width: 0; }
+        /* Vertical separators between days and axis */
+        .time-axis { border-right: 1px solid #000 !important; }
+        .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
         /* Remove tinted event backgrounds for print */
         .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
-        .axis-hour { font-size: 0.65rem; }
+        .axis-hour { font-size: 0.65rem; transform: translateY(0.9em) !important; }
         .all-day-block { font-size: .65rem; line-height: 1.1; }
         .all-day-title { font-size: .65rem; line-height: 1.1; }
         .event-block { padding: .16rem .24rem; font-size: .7rem; }
