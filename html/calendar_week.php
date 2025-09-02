@@ -241,10 +241,10 @@ function css_colors_from_hex(?string $hex): ?array {
         @page { size: 11in 8.5in; margin: 0.4in; }
         html, body { width: 11in; height: 8.5in; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        html, body, .week-grid, .day-card, .axis-content, .day-content { background-color: #fff !important; }
-        /* Sharper grid lines for print */
-        .axis-content { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.4) 0, rgba(0,0,0,0.4) 1px, transparent 1px, transparent var(--hour-height)) !important; }
-        .day-content { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.4) 0, rgba(0,0,0,0.4) 1px, transparent 1px, transparent var(--hour-height)) !important; }
+        /* Force white backgrounds and remove any background images */
+        html, body, .week-grid, .day-card, .axis-content, .day-content, .day-col, .time-axis, .day-body, .card, .card-body {
+          background-color: #fff !important; background-image: none !important;
+        }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
         .week-main { padding: 0 !important; width: var(--grid-w) !important; margin: 0 auto !important; }
@@ -265,6 +265,8 @@ function css_colors_from_hex(?string $hex): ?array {
         }
         .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
         .day-col { min-width: 0; }
+        /* Remove tinted event backgrounds for print */
+        .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
         .axis-hour { font-size: 0.65rem; }
         .all-day-block { font-size: .72rem; }
         .event-block { padding: .18rem .28rem; }
