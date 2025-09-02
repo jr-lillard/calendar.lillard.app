@@ -235,10 +235,11 @@ function css_colors_from_hex(?string $hex): ?array {
       @media print {
         /* Target Letter landscape explicitly; adjust margins and compute grid size in inches */
         @page { size: 11in 8.5in; margin: 0.4in; }
+        html, body { width: 11in; height: 8.5in; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
-        .week-main { padding: 0 !important; }
+        .week-main { padding: 0 !important; width: var(--grid-w) !important; margin: 0 auto !important; }
         .week-scroll { overflow: visible !important; height: auto !important; }
         /* Compute exact fit: page width/height minus margins */
         :root {
