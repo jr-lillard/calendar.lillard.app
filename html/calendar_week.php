@@ -205,7 +205,7 @@ function css_colors_from_hex(?string $hex): ?array {
           transparent var(--hour-height)
         );
       }
-      .axis-hour { position: absolute; left: 4px; font-size: 0.75rem; color: #6c757d; transform: translateY(-50%); white-space: nowrap; }
+      .axis-hour { position: absolute; left: 0; right: 6px; text-align: right !important; font-size: 0.75rem; color: #6c757d; transform: translateY(-50%); white-space: nowrap; }
 
       .day-col { min-width: 180px; }
       .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; }
@@ -255,7 +255,9 @@ function css_colors_from_hex(?string $hex): ?array {
         :root {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
-          --grid-h: calc(var(--page-h) - 2 * var(--m));
+          /* subtract border + safety to avoid a second page */
+          --safety: 6px;
+          --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
           --bleed-right: 1.0in;  /* extend right edge to fill preview */
           --bleed-bottom: 0in;   /* ensure single page height */
           --print-day-header: 1.1in;
@@ -278,8 +280,8 @@ function css_colors_from_hex(?string $hex): ?array {
         .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
         /* Remove tinted event backgrounds for print */
         .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
-        .axis-hour { font-size: 0.65rem; transform: translateY(0.3em) !important; }
-        .axis-content, .day-content { border-bottom: 1px solid #000 !important; }
+        .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
+        .axis-content, .day-content { border-bottom: 0 !important; }
         .all-day-block { font-size: .65rem; line-height: 1.1; }
         .all-day-title { font-size: .65rem; line-height: 1.1; }
         .event-block { padding: .16rem .24rem; font-size: .7rem; }
@@ -322,10 +324,16 @@ function css_colors_from_hex(?string $hex): ?array {
               <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
                 <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
               <?php endfor; ?>
-              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
-                <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 1px);">
-                  <?= h(fmt_hour_label($h)) ?>
-                </div>
+              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
+                <?php if ($h < $endHour): ?>
+                  <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 2px);">
+                    <?= h(fmt_hour_label($h)) ?>
+                  </div>
+                <?php else: /* last label (11 PM) – anchor to bottom so it always shows */ ?>
+                  <div class="axis-hour" style="bottom: 2px; transform: none;">
+                    <?= h(fmt_hour_label($h)) ?>
+                  </div>
+                <?php endif; ?>
               <?php endfor; ?>
             </div>
           </div>
