@@ -259,10 +259,10 @@ function css_colors_from_hex(?string $hex): ?array {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           /* subtract border + safety to avoid a second page */
-          --safety: 40px; /* extra safety to prevent page 2 */
+          --safety: 96px; /* increased safety to prevent page 2 */
           --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
-          --bleed-right: 1.0in;  /* extend right edge to fill preview */
-          --print-day-header: 1.1in;
+          --bleed-right: 0.6in;  /* modest right bleed to fill preview */
+          --print-day-header: 1.0in; /* slightly reduced to improve fit */
           --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
         }
         .week-grid {
@@ -275,7 +275,7 @@ function css_colors_from_hex(?string $hex): ?array {
         .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
         .container-fluid, .week-main, .week-scroll, .week-grid { padding: 0 !important; margin: 0 !important; }
         .card, .day-card { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-        .hour-line { border-top-color: rgba(0,0,0,0.6) !important; }
+        .hour-line { border-top-color: rgba(0,0,0,0.7) !important; }
         .day-col { min-width: 0; }
         /* Vertical separators between days and axis */
         .time-axis { border-right: 1px solid #000 !important; }
@@ -289,6 +289,8 @@ function css_colors_from_hex(?string $hex): ?array {
         .event-block { padding: .16rem .24rem; font-size: .7rem; }
         /* show hour lines for print (axis and days) */
         .axis-content .hour-line, .day-content .hour-line { display: block !important; }
+        /* avoid page breaks around the grid */
+        .week-grid, .week-scroll { break-after: avoid-page; break-before: avoid-page; }
       }
     </style>
   </head>
@@ -334,7 +336,7 @@ function css_colors_from_hex(?string $hex): ?array {
                     <?= h(fmt_hour_label($h)) ?>
                   </div>
                 <?php else: /* last label (11 PM) – position just above the bottom boundary line */ ?>
-                  <div class="axis-hour" style="top: calc(((<?= (int)($endHour - $startHour) ?> * var(--hour-height)) - 0.8em));">
+                  <div class="axis-hour" style="bottom: 2px; transform: none;">
                     <?= h(fmt_hour_label($h)) ?>
                   </div>
                 <?php endif; ?>
