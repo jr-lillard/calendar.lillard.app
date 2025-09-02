@@ -249,20 +249,21 @@ function css_colors_from_hex(?string $hex): ?array {
         }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
-        .week-main { padding: 0 !important; width: var(--grid-w) !important; margin: 0 auto !important; }
+        .week-main { padding: 0 !important; width: calc(var(--grid-w) + var(--bleed)) !important; margin: 0 !important; }
         .week-scroll { overflow: visible !important; height: auto !important; }
         /* Compute exact fit: page width/height minus margins */
         :root {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           --grid-h: calc(var(--page-h) - 2 * var(--m));
+          --bleed: 0.5in;
           --print-day-header: 1.1in;
           --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
         }
         .week-grid {
           grid-template-columns: 40px repeat(7, minmax(1px, 1fr));
-          width: var(--grid-w) !important;
-          height: var(--grid-h) !important;
+          width: calc(var(--grid-w) + var(--bleed)) !important;
+          height: calc(var(--grid-h) + var(--bleed)) !important;
           page-break-inside: avoid;
         }
         .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
