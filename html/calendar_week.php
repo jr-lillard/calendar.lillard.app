@@ -233,8 +233,8 @@ function css_colors_from_hex(?string $hex): ?array {
 
       /* Print styles: landscape, start at grid, single page fit */
       @media print {
-        /* Target Letter landscape explicitly; no margins (driver may still enforce hardware margin) */
-        @page { size: 11in 8.5in; margin: 0; }
+        /* Target Letter landscape; restore standard margins */
+        @page { size: 11in 8.5in; margin: 0.4in; }
         html, body { width: 11in; height: 8.5in; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* Hide chrome above the grid */
@@ -243,7 +243,7 @@ function css_colors_from_hex(?string $hex): ?array {
         .week-scroll { overflow: visible !important; height: auto !important; }
         /* Compute exact fit: page width/height minus margins */
         :root {
-          --page-w: 11in; --page-h: 8.5in; --m: 0in;
+          --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           --grid-h: calc(var(--page-h) - 2 * var(--m));
           --print-day-header: 0.9in;
