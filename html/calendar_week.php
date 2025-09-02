@@ -235,12 +235,14 @@ function css_colors_from_hex(?string $hex): ?array {
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+      /* Hide explicit hour lines on screen (use background grid); enable only for print */
+      .axis-content .hour-line, .day-content .hour-line { display: none; }
 
       /* Print styles: landscape, start at grid, single page fit */
       @media print {
         /* Target Letter landscape; restore standard margins */
         @page { size: 11in 8.5in; margin: 0.4in; }
-        html, body { width: 11in; height: 8.5in; }
+        html, body { width: 11in; height: 8.5in; margin: 0 !important; padding: 0 !important; }
         * { box-shadow: none !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* Force white backgrounds and remove any background images */
@@ -250,13 +252,14 @@ function css_colors_from_hex(?string $hex): ?array {
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
         .week-main { padding: 0 !important; width: calc(var(--grid-w) + var(--bleed-right)) !important; margin: 0 !important; }
-        .week-scroll { overflow: visible !important; height: auto !important; }
+        /* Lock the scroll area to one page and clip overflow to avoid page 2 */
+        .week-scroll { overflow: hidden !important; height: var(--grid-h) !important; }
         /* Compute exact fit: page width/height minus margins */
         :root {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           /* subtract border + safety to avoid a second page */
-          --safety: 14px; /* increased safety to prevent page 2 */
+          --safety: 40px; /* extra safety to prevent page 2 */
           --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
           --bleed-right: 1.0in;  /* extend right edge to fill preview */
           --print-day-header: 1.1in;
@@ -284,6 +287,8 @@ function css_colors_from_hex(?string $hex): ?array {
         .all-day-block { font-size: .65rem; line-height: 1.1; }
         .all-day-title { font-size: .65rem; line-height: 1.1; }
         .event-block { padding: .16rem .24rem; font-size: .7rem; }
+        /* show hour lines for print (axis and days) */
+        .axis-content .hour-line, .day-content .hour-line { display: block !important; }
       }
     </style>
   </head>
@@ -334,6 +339,8 @@ function css_colors_from_hex(?string $hex): ?array {
                   </div>
                 <?php endif; ?>
               <?php endfor; ?>
+              <!-- bottom boundary line for axis (print-visible) -->
+              <div class="hour-line" style="bottom: 0;"></div>
             </div>
           </div>
           <?php
