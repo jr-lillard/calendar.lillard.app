@@ -233,20 +233,32 @@ function css_colors_from_hex(?string $hex): ?array {
 
       /* Print styles: landscape, start at grid, single page fit */
       @media print {
-        @page { size: landscape; margin: 8mm; }
+        /* Target Letter landscape explicitly; adjust margins and compute grid size in inches */
+        @page { size: 11in 8.5in; margin: 0.4in; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
         .week-main { padding: 0 !important; }
         .week-scroll { overflow: visible !important; height: auto !important; }
-        /* Fit exactly one page: compute hour height from page height minus header */
-        :root { --print-day-header: 20mm; --hour-height: calc((100vh - var(--print-day-header)) / (var(--end-hour) - var(--start-hour))); }
-        .week-grid { grid-template-columns: 40px repeat(7, minmax(120px, 1fr)); height: 100vh !important; page-break-inside: avoid; }
+        /* Compute exact fit: page width/height minus margins */
+        :root {
+          --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
+          --grid-w: calc(var(--page-w) - 2 * var(--m));
+          --grid-h: calc(var(--page-h) - 2 * var(--m));
+          --print-day-header: 0.9in;
+          --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
+        }
+        .week-grid {
+          grid-template-columns: 40px repeat(7, minmax(1px, 1fr));
+          width: var(--grid-w) !important;
+          height: var(--grid-h) !important;
+          page-break-inside: avoid;
+        }
         .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
-        .day-col { min-width: 120px; }
+        .day-col { min-width: 0; }
         .axis-hour { font-size: 0.65rem; }
         .all-day-block { font-size: .72rem; }
-        .event-block { padding: .2rem .3rem; }
+        .event-block { padding: .18rem .28rem; }
       }
     </style>
   </head>

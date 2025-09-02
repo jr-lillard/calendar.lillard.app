@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+session_start();
 
 // Generates a PDF of the weekly view via wkhtmltopdf if available.
 // Usage: export_pdf.php?id=123&date=YYYY-MM-DD
@@ -36,8 +37,15 @@ if ($bin === '') {
 // Render PDF to stdout
 header('Content-Type: application/pdf');
 header('Content-Disposition: inline; filename="calendar-week.pdf"');
-$cmd = sprintf('%s --print-media-type --encoding utf-8 --orientation Landscape --page-size Letter --margin-top 8mm --margin-bottom 8mm --margin-left 8mm --margin-right 8mm %s -',
+$cookieName = session_name();
+$cookieVal = (string)($_COOKIE[$cookieName] ?? session_id());
+$cmd = sprintf(
+  '%s --print-media-type --encoding utf-8 --orientation Landscape --page-size Letter '
+  .'--margin-top 8mm --margin-bottom 8mm --margin-left 8mm --margin-right 8mm '
+  .'--cookie %s %s %s -',
   escapeshellarg($bin),
+  escapeshellarg($cookieName),
+  escapeshellarg($cookieVal),
   escapeshellarg($url)
 );
 $proc = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -55,4 +63,3 @@ if ($exitCode !== 0) {
   // Send minimal error details
   error_log('wkhtmltopdf failed: '.$stderr);
 }
-
