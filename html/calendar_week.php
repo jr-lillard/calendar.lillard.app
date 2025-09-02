@@ -256,16 +256,17 @@ function css_colors_from_hex(?string $hex): ?array {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
           --grid-h: calc(var(--page-h) - 2 * var(--m));
-          --bleed-right: 1.0in;
-          --bleed-bottom: 0.75in;
+          --bleed-right: 1.0in;  /* extend right edge to fill preview */
+          --bleed-bottom: 0in;   /* ensure single page height */
           --print-day-header: 1.1in;
           --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
         }
         .week-grid {
           grid-template-columns: 40px repeat(7, minmax(1px, 1fr));
           width: calc(var(--grid-w) + var(--bleed-right)) !important;
-          height: calc(var(--grid-h) + var(--bleed-bottom)) !important;
+          height: var(--grid-h) !important;
           page-break-inside: avoid;
+          border: 1px solid #000 !important;
         }
         .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
         .container-fluid, .week-main, .week-scroll, .week-grid { padding: 0 !important; margin: 0 !important; }
@@ -277,7 +278,8 @@ function css_colors_from_hex(?string $hex): ?array {
         .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
         /* Remove tinted event backgrounds for print */
         .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
-        .axis-hour { font-size: 0.65rem; transform: translateY(0.9em) !important; }
+        .axis-hour { font-size: 0.65rem; transform: translateY(0.3em) !important; }
+        .axis-content, .day-content { border-bottom: 1px solid #000 !important; }
         .all-day-block { font-size: .65rem; line-height: 1.1; }
         .all-day-title { font-size: .65rem; line-height: 1.1; }
         .event-block { padding: .16rem .24rem; font-size: .7rem; }
@@ -317,10 +319,10 @@ function css_colors_from_hex(?string $hex): ?array {
           <div class="time-axis">
             <div class="axis-header"></div>
             <div class="axis-content">
-              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
+              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
                 <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
               <?php endfor; ?>
-              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
+              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
                 <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 1px);">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
@@ -426,7 +428,7 @@ function css_colors_from_hex(?string $hex): ?array {
                 </div>
                 <div class="day-body">
                   <div class="day-content">
-                    <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
+                    <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
                       <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
                     <?php endfor; ?>
                     <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); $clr = css_colors_from_hex($ev['color'] ?? null); ?>
