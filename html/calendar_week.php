@@ -258,6 +258,13 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
+        /* Eliminate any padding that could push to a second page */
+        .container-fluid, .week-main { padding: 0 !important; margin: 0 !important; }
+        /* Explicit heights to guarantee a single page */
+        .week-grid { height: var(--print-content-h) !important; }
+        .day-card { height: 100% !important; }
+        .day-body { height: calc(var(--print-content-h) - var(--header-height)) !important; }
+        .axis-content, .day-content { height: 100% !important; }
         /* Neutralize sticky/overflow in print to prevent layout drift */
         .day-header, .axis-header { position: static !important; overflow: hidden !important; }
         /* Remove Bootstrap card borders that add extra height in print */
@@ -272,6 +279,17 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       /* In on-screen print preview, put labels just below the hour line */
       .print-preview { --label-offset: 4px; }
       .print-preview .navbar, .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
+      /* Mirror print sizing in on-screen preview using CSS inches */
+      body.print-preview {
+        --print-content-h: calc(8.5in - 0.7in - 2px);
+        --header-height: 0.60in;
+        --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
+      }
+      .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
+      .print-preview .week-grid { height: var(--print-content-h) !important; }
+      .print-preview .day-card { height: 100% !important; }
+      .print-preview .day-body { height: calc(var(--print-content-h) - var(--header-height)) !important; }
+      .print-preview .axis-content, .print-preview .day-content { height: 100% !important; }
       @media print {
         html, body { margin: 0 !important; padding: 0 !important; }
       }
@@ -532,40 +550,26 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         }
 
         function computePrintPreviewHourHeight() {
-          if (!document.body.classList.contains('print-preview')) return;
-          const grid = document.querySelector('.week-grid');
-          if (!grid) return;
-          // Use fixed header height from CSS var to ensure uniform headers
-          const axisHeader = document.querySelector('.axis-header');
-          let headerH = 0;
-          if (axisHeader) { headerH = Math.round(axisHeader.getBoundingClientRect().height); }
-          const rect = grid.getBoundingClientRect();
-          const viewportH = window.innerHeight || document.documentElement.clientHeight || 800;
-          let avail = Math.max(200, Math.floor(viewportH - rect.top - 2));
-          // Subtract header height to leave room for the hour grid only
-          avail = Math.max(120, avail - headerH);
-          const slots = Math.max(1, endHour - startHour);
-          const perHour = Math.max(18, Math.floor(avail / slots));
-          document.documentElement.style.setProperty('--hour-height', perHour + 'px');
+          // In preview/print, we rely on CSS inch-based variables for exact print fit.
+          // Do not override --hour-height from JS to avoid drift and two-page spill.
+          return;
         }
 
         function layout() {
           if (document.body.classList.contains('print-preview')) {
-            computePrintPreviewHourHeight();
-          } else {
-            computeScreenHourHeight();
+            return; // CSS controls sizing in preview/print
           }
+          computeScreenHourHeight();
         }
 
         window.addEventListener('resize', layout);
         document.addEventListener('DOMContentLoaded', layout);
         // Account for font loading/metrics
         setTimeout(layout, 50);
-        // Recompute when entering print preview / before printing
-        window.addEventListener('beforeprint', () => { computePrintPreviewHourHeight(); });
+        // Recompute after printing back to screen layout
         window.addEventListener('afterprint', layout);
         const mql = window.matchMedia && window.matchMedia('print');
-        if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (e.matches) computePrintPreviewHourHeight(); }); }
+        if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (!e.matches) layout(); }); }
       })();
     </script>
   </body>
