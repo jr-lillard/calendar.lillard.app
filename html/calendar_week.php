@@ -260,13 +260,13 @@ function css_colors_from_hex(?string $hex): ?array {
           height: var(--grid-h) !important;
         }
         /* Lock the scroll area to one page and clip overflow to avoid page 2 */
-        .week-scroll { overflow: hidden !important; height: calc(var(--grid-h)) !important; }
+        .week-scroll { overflow: hidden !important; height: calc(var(--grid-h)) !important; margin: 0 !important; }
         /* Compute exact fit: page width/height minus margins */
         :root {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
-          /* subtract border + a small safety to prevent page 2 */
-          --safety: 14px; /* small safety buffer */
+          /* subtract border + a safety to prevent page 2 */
+          --safety: 0.35in; /* increased buffer for bottom overflow */
           --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
           --bleed-right: 0.2in;  /* slight right bleed to hide preview gutter */
           --print-day-header: 0.95in; /* reduce header a touch to gain room */
@@ -275,7 +275,7 @@ function css_colors_from_hex(?string $hex): ?array {
         .week-grid {
           grid-template-columns: 40px repeat(7, minmax(1px, 1fr));
           width: calc(var(--grid-w) + var(--bleed-right)) !important;
-          height: var(--grid-h) !important;
+          height: var(--grid-h) !important; max-height: var(--grid-h) !important;
           page-break-inside: avoid;
           border: 1px solid #000 !important;
         }
@@ -283,6 +283,10 @@ function css_colors_from_hex(?string $hex): ?array {
         .container-fluid, .week-main, .week-scroll, .week-grid { padding: 0 !important; margin: 0 !important; }
         .card, .day-card { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
         .hour-line { border-top-color: rgba(0,0,0,0.7) !important; }
+        /* Ensure hour lines are visible in print */
+        .axis-content .hour-line, .day-content .hour-line { display: block !important; }
+        /* Avoid any overflow at the bottom */
+        .week-main { overflow: hidden !important; }
         .day-col { min-width: 0; }
         /* Vertical separators between days and axis */
         .time-axis { border-right: 1px solid #000 !important; }
