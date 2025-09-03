@@ -274,11 +274,11 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
             background-color: #fff !important; background-image: none !important;
           }
         }
-        /* In preview, mirror print sizing using inch-based vars; in real print we set them above */
-        body.print-preview { --print-content-h: calc(8.5in - 0.7in); --print-header-h: 0.45in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
-        /* Header height in print/preview */
-        .print-preview .axis-header, .print-preview .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; }
-        @media print { .axis-header, .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; } }
+        /* In preview, we measure headers and set --hour-height via JS for exact fit. */
+        body.print-preview { --print-content-h: calc(8.5in - 0.7in); }
+        /* Header height in preview/print: allow natural height so all-day blocks are visible */
+        .print-preview .axis-header, .print-preview .day-header { height: auto !important; overflow: visible !important; }
+        @media print { .axis-header, .day-header { height: auto !important; overflow: visible !important; } }
         /* Allow normal flow (no fixed positioning) */
         body.print-preview { min-height: auto !important; height: auto !important; }
         .print-preview .week-main, .print-preview .week-scroll { position: static !important; overflow: visible !important; height: auto !important; }
@@ -491,44 +491,62 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <script>
       (function(){
         const startHour = 7, endHour = 24; // 17 slots
-        function computeAndSetHourHeight() {
-          // Skip sizing in print preview or during print; use inch-based CSS vars instead
-          if (document.body.classList.contains('print-preview')) return;
-          if (window.matchMedia && window.matchMedia('print').matches) return;
+
+        function equalizeHeaders() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
           const axisHeader = document.querySelector('.axis-header');
-          const grid = document.querySelector('.week-grid');
-          if (!grid || headers.length === 0) return;
-
-          // Equalize header heights across columns for consistent grid (screen only)
+          if (headers.length === 0) return 0;
           let maxH = 0;
           headers.forEach(h => { h.style.height = ''; maxH = Math.max(maxH, h.offsetHeight); });
           headers.forEach(h => { h.style.height = maxH + 'px'; });
           if (axisHeader) axisHeader.style.height = maxH + 'px';
+          return maxH;
+        }
 
-          // Available height: viewport height minus grid's top position minus a small safety for border
+        function computeScreenHourHeight() {
+          const grid = document.querySelector('.week-grid');
+          if (!grid) return;
+          const headerH = equalizeHeaders();
           const rect = grid.getBoundingClientRect();
           const viewportH = window.innerHeight || document.documentElement.clientHeight || 800;
           let avail = Math.max(200, Math.floor(viewportH - rect.top - 2));
           // Subtract header height to get hour grid height
-          avail = Math.max(120, avail - maxH);
+          avail = Math.max(120, avail - headerH);
           const hours = Math.max(1, endHour - startHour);
           const perHour = Math.max(20, Math.floor(avail / hours));
           document.documentElement.style.setProperty('--hour-height', perHour + 'px');
         }
 
-        function layout() { computeAndSetHourHeight(); }
+        function computePrintPreviewHourHeight() {
+          if (!document.body.classList.contains('print-preview')) return;
+          const DPI = 96; // CSS px per inch in print/preview
+          const pageHIn = 8.5, marginsIn = 0.35 * 2; // top+bottom
+          const printablePx = Math.floor((pageHIn - marginsIn) * DPI);
+          const headerH = equalizeHeaders();
+          // Small safety to avoid spill due to rounding/border
+          const safety = 2; // px
+          const slots = Math.max(1, endHour - startHour);
+          const perHour = Math.max(18, Math.floor((printablePx - headerH - safety) / slots));
+          document.documentElement.style.setProperty('--hour-height', perHour + 'px');
+        }
+
+        function layout() {
+          if (document.body.classList.contains('print-preview')) {
+            computePrintPreviewHourHeight();
+          } else {
+            computeScreenHourHeight();
+          }
+        }
 
         window.addEventListener('resize', layout);
         document.addEventListener('DOMContentLoaded', layout);
         // Account for font loading/metrics
         setTimeout(layout, 50);
-        // Recompute when entering print preview in some browsers
-        // In print, do not override CSS-calculated sizes
-        window.addEventListener('beforeprint', () => {});
+        // Recompute when entering print preview / before printing
+        window.addEventListener('beforeprint', () => { computePrintPreviewHourHeight(); });
         window.addEventListener('afterprint', layout);
         const mql = window.matchMedia && window.matchMedia('print');
-        if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (e.matches) layout(); }); }
+        if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (e.matches) computePrintPreviewHourHeight(); }); }
       })();
     </script>
   </body>
