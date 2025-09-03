@@ -208,6 +208,9 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         );
       }
       .axis-hour { position: absolute; left: 0; right: 6px; text-align: right !important; font-size: 0.75rem; color: #6c757d; transform: translateY(-50%); white-space: nowrap; }
+      /* In print preview and print, do not vertically center labels */
+      .print-preview .axis-hour { transform: none; }
+      @media print { .axis-hour { transform: none; } }
 
       .day-col { min-width: 180px; }
       .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; }
@@ -237,8 +240,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
-      /* Hide explicit hour lines on screen (use background grid); enable only for print */
+      /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
       .axis-content .hour-line, .day-content .hour-line { display: none; }
+      .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
+      @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
       @media print {
@@ -522,14 +527,16 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
 
         function computePrintPreviewHourHeight() {
           if (!document.body.classList.contains('print-preview')) return;
-          const DPI = 96; // CSS px per inch in print/preview
-          const pageHIn = 8.5, marginsIn = 0.35 * 2; // top+bottom
-          const printablePx = Math.floor((pageHIn - marginsIn) * DPI);
+          const grid = document.querySelector('.week-grid');
+          if (!grid) return;
           const headerH = equalizeHeaders();
-          // Small safety to avoid spill due to rounding/border
-          const safety = 2; // px
+          const rect = grid.getBoundingClientRect();
+          const viewportH = window.innerHeight || document.documentElement.clientHeight || 800;
+          let avail = Math.max(200, Math.floor(viewportH - rect.top - 2));
+          // Subtract header height to leave room for the hour grid only
+          avail = Math.max(120, avail - headerH);
           const slots = Math.max(1, endHour - startHour);
-          const perHour = Math.max(18, Math.floor((printablePx - headerH - safety) / slots));
+          const perHour = Math.max(18, Math.floor(avail / slots));
           document.documentElement.style.setProperty('--hour-height', perHour + 'px');
         }
 
