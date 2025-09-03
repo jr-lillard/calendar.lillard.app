@@ -266,10 +266,8 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
             background-color: #fff !important; background-image: none !important;
           }
         }
-        /* Use a conservative per-hour height for print/preview to keep within one page.
-           Note: CSS custom properties cascade; define on body (.print-preview) so it overrides :root. */
-        .print-preview { --hour-height: 24px; }
-        @media print { body { --hour-height: 24px; } }
+        /* Hour height for print/preview is computed dynamically via JS to fill one page.
+           Do not set a fixed --hour-height here so JS can control it. */
         /* Header height in print/preview */
         .print-preview .axis-header, .print-preview .day-header { height: 100px !important; overflow: hidden; }
         @media print { .axis-header, .day-header { height: 100px !important; overflow: hidden; } }
@@ -485,27 +483,41 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       (function(){
-        const startHour = 7, endHour = 24;
-        function layout() {
+        const startHour = 7, endHour = 24; // 17 slots
+        function computeAndSetHourHeight() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
           const axisHeader = document.querySelector('.axis-header');
-          const scroll = document.querySelector('.week-scroll');
-          if (!scroll || headers.length === 0) return;
-          // Equalize header heights across columns
+          const grid = document.querySelector('.week-grid');
+          if (!grid || headers.length === 0) return;
+
+          // Equalize header heights across columns for consistent grid
           let maxH = 0;
           headers.forEach(h => { h.style.height = ''; maxH = Math.max(maxH, h.offsetHeight); });
           headers.forEach(h => { h.style.height = maxH + 'px'; });
           if (axisHeader) axisHeader.style.height = maxH + 'px';
-          // Compute hour height to fill remaining space
-          const avail = scroll.clientHeight - maxH; // px for hours grid
+
+          // Available height: viewport height minus grid's top position minus a small safety for border
+          const rect = grid.getBoundingClientRect();
+          const viewportH = window.innerHeight || document.documentElement.clientHeight || 800;
+          let avail = Math.max(200, Math.floor(viewportH - rect.top - 2));
+          // Subtract header height to get hour grid height
+          avail = Math.max(120, avail - maxH);
           const hours = Math.max(1, endHour - startHour);
-          const perHour = Math.max(24, Math.floor(avail / hours));
+          const perHour = Math.max(20, Math.floor(avail / hours));
           document.documentElement.style.setProperty('--hour-height', perHour + 'px');
         }
+
+        function layout() { computeAndSetHourHeight(); }
+
         window.addEventListener('resize', layout);
         document.addEventListener('DOMContentLoaded', layout);
-        // Also run once after a tick to account for fonts
+        // Account for font loading/metrics
         setTimeout(layout, 50);
+        // Recompute when entering print preview in some browsers
+        window.addEventListener('beforeprint', layout);
+        window.addEventListener('afterprint', layout);
+        const mql = window.matchMedia && window.matchMedia('print');
+        if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (e.matches) layout(); }); }
       })();
     </script>
   </body>
