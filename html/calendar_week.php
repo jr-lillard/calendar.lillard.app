@@ -248,7 +248,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           /* Printable height = page height (8.5in) - top/bottom margins (0.8in) */
           --print-content-h: calc(8.5in - 0.8in);
           /* Shorter header to maximize grid height while avoiding overflow */
-          --print-header-h: 0.7in;
+          --print-header-h: 0.55in;
           --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17);
         }
       }
@@ -275,7 +275,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           }
         }
         /* In preview, mirror print sizing using inch-based vars; in real print we set them above */
-        body.print-preview { --print-content-h: calc(8.5in - 0.8in); --print-header-h: 0.7in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
+        body.print-preview { --print-content-h: calc(8.5in - 0.8in); --print-header-h: 0.55in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
         /* Header height in print/preview */
         .print-preview .axis-header, .print-preview .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; }
         @media print { .axis-header, .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; } }
@@ -302,11 +302,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         /* Remove tinted event backgrounds for print */
         .print-preview .event-block, .print-preview .all-day-block { background: #fff !important; border-color: #000 !important; }
         @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
-        /* Right-align time labels and position last label above bottom line */
+        /* Right-align time labels; all labels sit just below their hour line */
         .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
-        .print-preview .axis-hour-last { transform: translateY(-100%) !important; }
         @media print { .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; } }
-        @media print { .axis-hour-last { transform: translateY(-100%) !important; } }
+        /* No special transform for last label; keep it below the 11 PM line */
         /* Smaller text to avoid clipping */
         .print-preview .all-day-block, .print-preview .all-day-title { font-size: .65rem; line-height: 1.1; }
         .print-preview .event-block { padding: .16rem .24rem; font-size: .7rem; }
