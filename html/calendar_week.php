@@ -180,7 +180,19 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: 0.03in; }
+      /* Allow dynamic tuning of print safety via ?fudge=0.00..0.10 (inches) */
+      <?php
+        $fudge = null;
+        if (isset($_GET['fudge'])) {
+            $f = (float)$_GET['fudge'];
+            if ($f >= 0.00 && $f <= 0.10) { $fudge = $f; }
+        }
+        if ($fudge !== null) {
+            // Emit a CSS override for the print safety variable
+            echo ':root{ --print-safety: '.number_format($fudge, 3).'in; }';
+        }
+      ?>
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -252,7 +264,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         :root {
           /* Printable height = page height (8.5in) - top/bottom margins (0.7in)
              Subtract 2px for outer grid border and a tiny safety fudge to avoid spill */
-          --print-safety: 0.03in; /* small safety to prevent page-2 spill */
+          /* use global --print-safety (tunable) */
           --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           --header-height: 0.60in;
@@ -282,7 +294,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       .print-preview .navbar, .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
-        --print-safety: 0.03in;
+        /* mirror print sizing (uses same --print-safety as :root) */
         --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
         --header-height: 0.60in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
@@ -355,7 +367,14 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1">Preview</a>
+          <?php $fudgeParam = $fudge !== null ? $fudge : 0.03; $prevFudge = max(0.00, $fudgeParam - 0.01); $nextFudge = min(0.10, $fudgeParam + 0.01); ?>
+          <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>">Preview</a>
+          <?php if ($printMode): ?>
+            <div class="btn-group" role="group" aria-label="Fit">
+              <a class="btn btn-outline-primary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($prevFudge,2) ?>" title="Tighter fit">Fit −</a>
+              <a class="btn btn-outline-primary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($nextFudge,2) ?>" title="Looser fit">Fit +</a>
+            </div>
+          <?php endif; ?>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
