@@ -250,13 +250,20 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         @page { size: 11in 8.5in landscape; margin: 0.35in; }
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
-          /* Printable height = page height (8.5in) - top/bottom margins (0.7in) */
-          --print-content-h: calc(8.5in - 0.7in);
+          /* Printable height = page height (8.5in) - top/bottom margins (0.7in)
+             Subtract 2px for outer grid border to avoid spill */
+          --print-content-h: calc(8.5in - 0.7in - 2px);
           /* Fixed header height in print to keep all day headers equal */
           --header-height: 0.60in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
+        /* Neutralize sticky/overflow in print to prevent layout drift */
+        .day-header, .axis-header { position: static !important; overflow: hidden !important; }
+        /* Remove Bootstrap card borders that add extra height in print */
+        .card, .day-card, .card-header { border: 0 !important; }
+        /* Ensure axis header has no extra border in print */
+        .axis-header { border: 0 !important; }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
