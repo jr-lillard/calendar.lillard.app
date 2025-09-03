@@ -240,9 +240,16 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       /* Hide explicit hour lines on screen (use background grid); enable only for print */
       .axis-content .hour-line, .day-content .hour-line { display: none; }
 
-      /* Print & on-screen print preview: normal flow, no fixed heights */
+      /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
       @media print {
-        @page { size: landscape; margin: 0.4in; }
+        @page { size: 11in 8.5in landscape; margin: 0.4in; }
+        /* Compute per-hour height from printable page height (Letter landscape) */
+        :root {
+          /* Printable height = page height (8.5in) - top/bottom margins (0.8in) - outer grid border (2px) */
+          --print-content-h: calc(8.5in - 0.8in - 2px);
+          --print-header-h: 0.9in;
+          --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17);
+        }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
@@ -266,11 +273,11 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
             background-color: #fff !important; background-image: none !important;
           }
         }
-        /* Hour height for print/preview is computed dynamically via JS to fill one page.
-           Do not set a fixed --hour-height here so JS can control it. */
+        /* In preview, mirror print sizing using inch-based vars; in real print we set them above */
+        body.print-preview { --print-content-h: calc(8.5in - 0.8in - 2px); --print-header-h: 0.9in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
         /* Header height in print/preview */
-        .print-preview .axis-header, .print-preview .day-header { height: 100px !important; overflow: hidden; }
-        @media print { .axis-header, .day-header { height: 100px !important; overflow: hidden; } }
+        .print-preview .axis-header, .print-preview .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; }
+        @media print { .axis-header, .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; } }
         /* Allow normal flow (no fixed positioning) */
         body.print-preview { min-height: auto !important; height: auto !important; }
         .print-preview .week-main, .print-preview .week-scroll { position: static !important; overflow: visible !important; height: auto !important; }
@@ -280,7 +287,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         @media print { .card, .day-card { box-shadow: none !important; } }
         /* Border around entire grid */
         .print-preview .week-grid { border: 1px solid #000 !important; }
-        @media print { .week-grid { border: 1px solid #000 !important; } }
+        @media print { .week-grid { border: 1px solid #000 !important; break-inside: avoid; page-break-inside: avoid; } }
         /* Vertical separators between days and axis */
         .print-preview .time-axis { border-right: 1px solid #000 !important; }
         .print-preview .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
@@ -485,12 +492,15 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       (function(){
         const startHour = 7, endHour = 24; // 17 slots
         function computeAndSetHourHeight() {
+          // Skip sizing in print preview or during print; use inch-based CSS vars instead
+          if (document.body.classList.contains('print-preview')) return;
+          if (window.matchMedia && window.matchMedia('print').matches) return;
           const headers = Array.from(document.querySelectorAll('.day-header'));
           const axisHeader = document.querySelector('.axis-header');
           const grid = document.querySelector('.week-grid');
           if (!grid || headers.length === 0) return;
 
-          // Equalize header heights across columns for consistent grid
+          // Equalize header heights across columns for consistent grid (screen only)
           let maxH = 0;
           headers.forEach(h => { h.style.height = ''; maxH = Math.max(maxH, h.offsetHeight); });
           headers.forEach(h => { h.style.height = maxH + 'px'; });
@@ -514,7 +524,8 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         // Account for font loading/metrics
         setTimeout(layout, 50);
         // Recompute when entering print preview in some browsers
-        window.addEventListener('beforeprint', layout);
+        // In print, do not override CSS-calculated sizes
+        window.addEventListener('beforeprint', () => {});
         window.addEventListener('afterprint', layout);
         const mql = window.matchMedia && window.matchMedia('print');
         if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (e.matches) layout(); }); }
