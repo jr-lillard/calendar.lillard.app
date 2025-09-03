@@ -251,8 +251,9 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
           /* Printable height = page height (8.5in) - top/bottom margins (0.7in)
-             Subtract 2px for outer grid border to avoid spill */
-          --print-content-h: calc(8.5in - 0.7in - 2px);
+             Subtract 2px for outer grid border and a tiny safety fudge to avoid spill */
+          --print-safety: 0.03in; /* small safety to prevent page-2 spill */
+          --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           --header-height: 0.60in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
@@ -281,7 +282,8 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       .print-preview .navbar, .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
-        --print-content-h: calc(8.5in - 0.7in - 2px);
+        --print-safety: 0.03in;
+        --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
         --header-height: 0.60in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
@@ -307,8 +309,8 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
             background-color: #fff !important; background-image: none !important;
           }
         }
-        /* In preview, fix header height so all days match, and compute grid from viewport */
-        body.print-preview { --print-content-h: calc(8.5in - 0.7in); --header-height: 0.60in; --label-offset: 4px; }
+        /* In preview, fix header height so all days match; use same inch-based sizing as print */
+        /* (no override of --print-content-h here to avoid inconsistencies) */
         .print-preview .day-header, .print-preview .axis-header { position: static; overflow: hidden; }
         .print-preview .card { box-shadow: none !important; }
         /* Allow normal flow (no fixed positioning) */
