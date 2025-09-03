@@ -180,7 +180,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; }
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -195,7 +195,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         height: 100%;
       }
       .time-axis { position: relative; display: grid; grid-template-rows: auto 1fr; }
-      .axis-header { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.075); }
+      .axis-header { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.075); height: var(--header-height); }
       .axis-content {
         position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
         background-color: #fff;
@@ -214,7 +214,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
 
       .day-col { min-width: 180px; }
       .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; }
-      .day-header { position: sticky; top: 0; z-index: 1; background: #fff; }
+      .day-header { position: sticky; top: 0; z-index: 1; background: #fff; height: var(--header-height); }
       .day-body { position: relative; height: 100%; }
       .day-content {
         position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
@@ -250,11 +250,11 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         @page { size: 11in 8.5in landscape; margin: 0.35in; }
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
-          /* Printable height = page height (8.5in) - top/bottom margins (0.8in) */
+          /* Printable height = page height (8.5in) - top/bottom margins (0.7in) */
           --print-content-h: calc(8.5in - 0.7in);
-          /* Shorter header to maximize grid height while avoiding overflow */
-          --print-header-h: 0.45in;
-          --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17);
+          /* Fixed header height in print to keep all day headers equal */
+          --header-height: 0.60in;
+          --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
       }
@@ -282,11 +282,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
             background-color: #fff !important; background-image: none !important;
           }
         }
-        /* In preview, we measure headers and set --hour-height via JS for exact fit. */
-        body.print-preview { --print-content-h: calc(8.5in - 0.7in); }
-        /* Header height in preview/print: allow natural height so all-day blocks are visible */
-        .print-preview .axis-header, .print-preview .day-header { height: auto !important; overflow: visible !important; }
-        @media print { .axis-header, .day-header { height: auto !important; overflow: visible !important; } }
+        /* In preview, fix header height so all days match, and compute grid from viewport */
+        body.print-preview { --print-content-h: calc(8.5in - 0.7in); --header-height: 0.60in; --label-offset: 4px; }
+        .print-preview .day-header, .print-preview .axis-header { position: static; overflow: hidden; }
+        .print-preview .card { box-shadow: none !important; }
         /* Allow normal flow (no fixed positioning) */
         body.print-preview { min-height: auto !important; height: auto !important; }
         .print-preview .week-main, .print-preview .week-scroll { position: static !important; overflow: visible !important; height: auto !important; }
@@ -529,7 +528,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           if (!document.body.classList.contains('print-preview')) return;
           const grid = document.querySelector('.week-grid');
           if (!grid) return;
-          const headerH = equalizeHeaders();
+          // Use fixed header height from CSS var to ensure uniform headers
+          const axisHeader = document.querySelector('.axis-header');
+          let headerH = 0;
+          if (axisHeader) { headerH = Math.round(axisHeader.getBoundingClientRect().height); }
           const rect = grid.getBoundingClientRect();
           const viewportH = window.innerHeight || document.documentElement.clientHeight || 800;
           let avail = Math.max(200, Math.floor(viewportH - rect.top - 2));
