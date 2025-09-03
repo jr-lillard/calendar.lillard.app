@@ -171,6 +171,13 @@ function css_colors_from_hex(?string $hex): ?array {
 }
 // Enable on-screen print preview mode with ?print=1
 $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
+if ($printMode) {
+    // Prevent browser caching so preview reflects the latest sizing tweaks
+    if (!headers_sent()) {
+        header('Cache-Control: no-store, max-age=0, must-revalidate');
+        header('Pragma: no-cache');
+    }
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -374,8 +381,9 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>">Preview</a>
           <?php if ($printMode): ?>
             <div class="btn-group" role="group" aria-label="Fit">
-              <a class="btn btn-outline-primary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($prevFudge,2) ?>" title="Tighter fit">Fit −</a>
-              <a class="btn btn-outline-primary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($nextFudge,2) ?>" title="Looser fit">Fit +</a>
+              <a class="btn btn-outline-primary" id="fitMinus" data-fit="-0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($prevFudge,2) ?>" title="Tighter fit">Fit −</a>
+              <a class="btn btn-outline-primary" id="fitPlus" data-fit="+0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($nextFudge,2) ?>" title="Looser fit">Fit +</a>
+              <span class="ms-2 align-self-center small text-muted" id="fitValue" aria-live="polite"></span>
             </div>
           <?php endif; ?>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
@@ -547,6 +555,16 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <script>
       (function(){
         const startHour = 7, endHour = 24; // 17 slots
+        // Track current print safety ("fudge") in JS for live preview tuning
+        let printSafetyIn = (function(){
+          const css = getComputedStyle(document.documentElement);
+          const v = css.getPropertyValue('--print-safety').trim();
+          if (v && v.endsWith('in')) {
+            const num = parseFloat(v);
+            if (!isNaN(num)) return num;
+          }
+          return 0.03; // default
+        })();
 
         function equalizeHeaders() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
@@ -574,8 +592,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         }
 
         function computePrintPreviewHourHeight() {
-          // In preview/print, we rely on CSS inch-based variables for exact print fit.
-          // Do not override --hour-height from JS to avoid drift and two-page spill.
+          // CSS inch-based variables drive preview sizing; we only update CSS var on user input.
           return;
         }
 
@@ -594,6 +611,37 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         window.addEventListener('afterprint', layout);
         const mql = window.matchMedia && window.matchMedia('print');
         if (mql && mql.addEventListener) { mql.addEventListener('change', e => { if (!e.matches) layout(); }); }
+
+        // Live "Fit" controls in preview: adjust --print-safety without reloading
+        function updateFudgeDisplay() {
+          const el = document.getElementById('fitValue');
+          if (el) el.textContent = `Fit: ${printSafetyIn.toFixed(2)}in`;
+        }
+        function setFudge(valInches) {
+          // Clamp to 0.00..0.10in
+          printSafetyIn = Math.max(0, Math.min(0.10, +valInches));
+          document.documentElement.style.setProperty('--print-safety', printSafetyIn.toFixed(3) + 'in');
+          // Also update URL so a subsequent reload preserves the value
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('fudge', printSafetyIn.toFixed(2));
+            window.history.replaceState({}, '', url.toString());
+          } catch(e) {}
+          updateFudgeDisplay();
+        }
+        function nudgeFudge(delta) {
+          setFudge(printSafetyIn + delta);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+          if (document.body.classList.contains('print-preview')) {
+            // Initialize display with current CSS var value
+            updateFudgeDisplay();
+            const minus = document.getElementById('fitMinus');
+            const plus = document.getElementById('fitPlus');
+            if (minus) minus.addEventListener('click', (e) => { e.preventDefault(); nudgeFudge(-0.01); });
+            if (plus) plus.addEventListener('click', (e) => { e.preventDefault(); nudgeFudge(+0.01); });
+          }
+        });
       })();
     </script>
   </body>
