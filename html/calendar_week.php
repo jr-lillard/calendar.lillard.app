@@ -169,7 +169,6 @@ function css_colors_from_hex(?string $hex): ?array {
     $bd = sprintf('rgba(%d,%d,%d,0.6)', $r,$g,$b);
     return ['bg'=>$bg,'bd'=>$bd];
 }
-<?php
 // Enable on-screen print preview mode with ?print=1
 $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
 ?>
