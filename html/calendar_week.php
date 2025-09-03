@@ -251,18 +251,25 @@ function css_colors_from_hex(?string $hex): ?array {
         }
         /* Hide chrome above the grid */
         .navbar, .week-main > .d-flex, .alert { display: none !important; }
-        .week-main { padding: 0 !important; width: calc(var(--grid-w) + var(--bleed-right)) !important; margin: 0 !important; }
+        /* Position the printable region exactly within page margins */
+        .week-main {
+          position: fixed !important; /* lock to the first (single) page */
+          top: var(--m); left: var(--m);
+          padding: 0 !important; margin: 0 !important;
+          width: calc(var(--grid-w) + var(--bleed-right)) !important;
+          height: var(--grid-h) !important;
+        }
         /* Lock the scroll area to one page and clip overflow to avoid page 2 */
-        .week-scroll { overflow: hidden !important; height: var(--grid-h) !important; }
+        .week-scroll { overflow: hidden !important; height: calc(var(--grid-h)) !important; }
         /* Compute exact fit: page width/height minus margins */
         :root {
           --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
           --grid-w: calc(var(--page-w) - 2 * var(--m));
-          /* subtract border + safety to avoid a second page */
-          --safety: 96px; /* increased safety to prevent page 2 */
+          /* subtract border + a small safety to prevent page 2 */
+          --safety: 14px; /* small safety buffer */
           --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
-          --bleed-right: 0.6in;  /* modest right bleed to fill preview */
-          --print-day-header: 1.0in; /* slightly reduced to improve fit */
+          --bleed-right: 0.2in;  /* slight right bleed to hide preview gutter */
+          --print-day-header: 0.95in; /* reduce header a touch to gain room */
           --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
         }
         .week-grid {
@@ -283,6 +290,8 @@ function css_colors_from_hex(?string $hex): ?array {
         /* Remove tinted event backgrounds for print */
         .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
         .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
+        /* Position the last (11 PM) label just above the bottom line */
+        .axis-hour-last { transform: translateY(-100%) !important; }
         .axis-content, .day-content { border-bottom: 0 !important; }
         .all-day-block { font-size: .65rem; line-height: 1.1; }
         .all-day-title { font-size: .65rem; line-height: 1.1; }
@@ -291,6 +300,9 @@ function css_colors_from_hex(?string $hex): ?array {
         .axis-content .hour-line, .day-content .hour-line { display: block !important; }
         /* avoid page breaks around the grid */
         .week-grid, .week-scroll { break-after: avoid-page; break-before: avoid-page; }
+        /* Ensure no unexpected overflow margins at the bottom */
+        .week-grid { box-sizing: border-box !important; }
+        .day-body, .day-content, .axis-content { box-sizing: border-box !important; }
       }
     </style>
   </head>
@@ -336,7 +348,7 @@ function css_colors_from_hex(?string $hex): ?array {
                     <?= h(fmt_hour_label($h)) ?>
                   </div>
                 <?php else: /* last label (11 PM) – position just above the bottom boundary line */ ?>
-                  <div class="axis-hour" style="bottom: 2px; transform: none;">
+                  <div class="axis-hour axis-hour-last" style="bottom: 0;">
                     <?= h(fmt_hour_label($h)) ?>
                   </div>
                 <?php endif; ?>
