@@ -180,7 +180,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 23; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; }
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -339,19 +339,13 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           <div class="time-axis">
             <div class="axis-header"></div>
             <div class="axis-content">
-              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
+              <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<$endHour; $h++): ?>
                 <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
               <?php endfor; ?>
-              <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<=$endHour; $h++): ?>
-                <?php if ($h < $endHour): ?>
-                  <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 2px);">
-                    <?= h(fmt_hour_label($h)) ?>
-                  </div>
-                <?php else: /* last label (11 PM) – position just above the bottom boundary line */ ?>
-                  <div class="axis-hour axis-hour-last" style="bottom: 0;">
-                    <?= h(fmt_hour_label($h)) ?>
-                  </div>
-                <?php endif; ?>
+              <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<=$endHour-1; $h++): ?>
+                <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 2px);">
+                  <?= h(fmt_hour_label($h)) ?>
+                </div>
               <?php endfor; ?>
               <!-- bottom boundary line for axis (print-visible) -->
               <div class="hour-line" style="bottom: 0;"></div>
@@ -359,7 +353,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           </div>
           <?php
             // Prepare day structures with all-day vs timed events and computed positions
-            $startHour = 7; $endHour = 23;
+            $startHour = 7; $endHour = 24;
             foreach ($days as $ymd => $evs):
               $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz);
               $dayStartTs = $d->getTimestamp();
@@ -372,7 +366,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
                 // Compute minutes since local midnight using local H:i
                 $stDT = (new DateTimeImmutable('@'.$st))->setTimezone($tz);
                 $etDT = $et !== null ? (new DateTimeImmutable('@'.$et))->setTimezone($tz) : $stDT->modify('+1 hour');
-                $windowStartMin = $startHour * 60; $windowEndMin = $endHour * 60;
+                  $windowStartMin = $startHour * 60; $windowEndMin = $endHour * 60; // now 1440 to include 11 PM row fully
                 $startMin = (int)$stDT->format('G') * 60 + (int)$stDT->format('i');
                 $endMin = (int)$etDT->format('G') * 60 + (int)$etDT->format('i');
                 if ($endMin <= $windowStartMin || $startMin >= $windowEndMin) {
@@ -456,7 +450,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
                 </div>
                 <div class="day-body">
                   <div class="day-content">
-                    <?php $startHour = 7; $endHour = 23; for ($h=$startHour; $h<$endHour; $h++): ?>
+                    <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<$endHour; $h++): ?>
                       <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
                     <?php endfor; ?>
                     <!-- bottom boundary line for 11 PM -->
@@ -487,7 +481,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       (function(){
-        const startHour = 7, endHour = 23;
+        const startHour = 7, endHour = 24;
         function layout() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
           const axisHeader = document.querySelector('.axis-header');
