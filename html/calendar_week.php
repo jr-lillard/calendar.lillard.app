@@ -180,7 +180,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; }
       html, body { height: 100%; }
       body { display: flex; flex-direction: column; }
       main { flex: 1 1 auto; min-height: 0; }
@@ -250,12 +250,15 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           /* Shorter header to maximize grid height while avoiding overflow */
           --print-header-h: 0.45in;
           --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17);
+          --label-offset: 4px;
         }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
       @media print { .print-only { display: block !important; } }
       .print-preview .print-only { display: block !important; }
+      /* In on-screen print preview, put labels just below the hour line */
+      .print-preview { --label-offset: 4px; }
       .print-preview .navbar, .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
       @media print {
         html, body { margin: 0 !important; padding: 0 !important; }
@@ -352,7 +355,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
                 <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
               <?php endfor; ?>
               <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<=$endHour-1; $h++): $isLast = ($h === $endHour-1); ?>
-                <div class="axis-hour<?= $isLast ? ' axis-hour-last' : '' ?>" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 4px);">
+                <div class="axis-hour<?= $isLast ? ' axis-hour-last' : '' ?>" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + var(--label-offset));">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
               <?php endfor; ?>
