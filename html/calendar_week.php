@@ -291,7 +291,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
       .print-preview .print-only { display: block !important; }
       /* In on-screen print preview, put labels just below the hour line */
       .print-preview { --label-offset: 4px; }
-      .print-preview .navbar, .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
+      /* Keep navbar visible in on-screen preview so Fit buttons are usable */
+      .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
+      /* Hide navbar and page header only for the real printed page */
+      @media print { .navbar, .week-main > .d-flex, .alert { display: none !important; } }
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
         /* mirror print sizing (uses same --print-safety as :root) */
