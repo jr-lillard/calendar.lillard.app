@@ -188,12 +188,12 @@ if ($printMode) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
       :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: 0.03in; }
-      /* Allow dynamic tuning of print safety via ?fudge=0.00..0.50 (inches) */
+      /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
         if (isset($_GET['fudge'])) {
             $f = (float)$_GET['fudge'];
-            if ($f >= 0.00 && $f <= 0.50) { $fudge = $f; }
+            if ($f >= 0.00) { $fudge = $f; }
         }
         if ($fudge !== null) {
             // Emit a CSS override for the print safety variable
@@ -377,7 +377,7 @@ if ($printMode) {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <?php $fudgeParam = $fudge !== null ? $fudge : 0.03; $prevFudge = max(0.00, $fudgeParam - 0.01); $nextFudge = min(0.50, $fudgeParam + 0.01); ?>
+          <?php $fudgeParam = $fudge !== null ? $fudge : 0.03; $prevFudge = max(0.00, $fudgeParam - 0.01); $nextFudge = $fudgeParam + 0.01; ?>
           <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>">Preview</a>
           <?php if ($printMode): ?>
             <div class="btn-group" role="group" aria-label="Fit">
@@ -618,8 +618,8 @@ if ($printMode) {
           if (el) el.textContent = `Fit: ${printSafetyIn.toFixed(2)}in`;
         }
         function setFudge(valInches) {
-          // Clamp to 0.00..0.50in
-          printSafetyIn = Math.max(0, Math.min(0.50, +valInches));
+          // Clamp to non-negative only (no upper cap)
+          printSafetyIn = Math.max(0, +valInches);
           document.documentElement.style.setProperty('--print-safety', printSafetyIn.toFixed(3) + 'in');
           // Also update URL so a subsequent reload preserves the value
           try {
