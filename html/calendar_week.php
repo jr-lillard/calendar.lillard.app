@@ -266,9 +266,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
             background-color: #fff !important; background-image: none !important;
           }
         }
-        /* Use a conservative fixed per-hour height for print to keep within one page */
-        .print-preview :root { --hour-height: 28px; }
-        @media print { :root { --hour-height: 28px; } }
+        /* Use a conservative per-hour height for print/preview to keep within one page.
+           Note: CSS custom properties cascade; define on body (.print-preview) so it overrides :root. */
+        .print-preview { --hour-height: 24px; }
+        @media print { body { --hour-height: 24px; } }
         /* Header height in print/preview */
         .print-preview .axis-header, .print-preview .day-header { height: 100px !important; overflow: hidden; }
         @media print { .axis-header, .day-header { height: 100px !important; overflow: hidden; } }
@@ -276,6 +277,9 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         body.print-preview { min-height: auto !important; height: auto !important; }
         .print-preview .week-main, .print-preview .week-scroll { position: static !important; overflow: visible !important; height: auto !important; }
         @media print { .week-main, .week-scroll { position: static !important; overflow: visible !important; height: auto !important; } }
+        /* Remove card shadows/borders that can appear as shading at print */
+        .print-preview .card, .print-preview .day-card { box-shadow: none !important; }
+        @media print { .card, .day-card { box-shadow: none !important; } }
         /* Border around entire grid */
         .print-preview .week-grid { border: 1px solid #000 !important; }
         @media print { .week-grid { border: 1px solid #000 !important; } }
