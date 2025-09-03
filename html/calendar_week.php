@@ -245,10 +245,10 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         @page { size: 11in 8.5in landscape; margin: 0.4in; }
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
-          /* Printable height = page height (8.5in) - top/bottom margins (0.8in) - outer grid border (2px) */
-          --print-content-h: calc(8.5in - 0.8in - 2px);
-          /* Slightly shorter header to give the grid more height while still avoiding overflow */
-          --print-header-h: 0.8in;
+          /* Printable height = page height (8.5in) - top/bottom margins (0.8in) */
+          --print-content-h: calc(8.5in - 0.8in);
+          /* Shorter header to maximize grid height while avoiding overflow */
+          --print-header-h: 0.7in;
           --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17);
         }
       }
@@ -275,7 +275,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           }
         }
         /* In preview, mirror print sizing using inch-based vars; in real print we set them above */
-        body.print-preview { --print-content-h: calc(8.5in - 0.8in - 2px); --print-header-h: 0.8in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
+        body.print-preview { --print-content-h: calc(8.5in - 0.8in); --print-header-h: 0.7in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
         /* Header height in print/preview */
         .print-preview .axis-header, .print-preview .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; }
         @media print { .axis-header, .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; } }
@@ -352,8 +352,8 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
               <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<$endHour; $h++): ?>
                 <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
               <?php endfor; ?>
-              <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<=$endHour-1; $h++): ?>
-                <div class="axis-hour" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 2px);">
+              <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<=$endHour-1; $h++): $isLast = ($h === $endHour-1); ?>
+                <div class="axis-hour<?= $isLast ? ' axis-hour-last' : '' ?>" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + 2px);">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
               <?php endfor; ?>
