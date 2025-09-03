@@ -247,7 +247,8 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
         :root {
           /* Printable height = page height (8.5in) - top/bottom margins (0.8in) - outer grid border (2px) */
           --print-content-h: calc(8.5in - 0.8in - 2px);
-          --print-header-h: 0.9in;
+          /* Slightly shorter header to give the grid more height while still avoiding overflow */
+          --print-header-h: 0.8in;
           --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17);
         }
       }
@@ -274,7 +275,7 @@ $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
           }
         }
         /* In preview, mirror print sizing using inch-based vars; in real print we set them above */
-        body.print-preview { --print-content-h: calc(8.5in - 0.8in - 2px); --print-header-h: 0.9in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
+        body.print-preview { --print-content-h: calc(8.5in - 0.8in - 2px); --print-header-h: 0.8in; --hour-height: calc((var(--print-content-h) - var(--print-header-h)) / 17); }
         /* Header height in print/preview */
         .print-preview .axis-header, .print-preview .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; }
         @media print { .axis-header, .day-header { height: var(--print-header-h, 0.9in) !important; overflow: hidden; } }
