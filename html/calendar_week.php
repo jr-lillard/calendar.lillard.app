@@ -169,6 +169,9 @@ function css_colors_from_hex(?string $hex): ?array {
     $bd = sprintf('rgba(%d,%d,%d,0.6)', $r,$g,$b);
     return ['bg'=>$bg,'bd'=>$bd];
 }
+<?php
+// Enable on-screen print preview mode with ?print=1
+$printMode = isset($_GET['print']) && $_GET['print'] !== '0';
 ?>
 <!doctype html>
 <html lang="en">
@@ -238,85 +241,79 @@ function css_colors_from_hex(?string $hex): ?array {
       /* Hide explicit hour lines on screen (use background grid); enable only for print */
       .axis-content .hour-line, .day-content .hour-line { display: none; }
 
-      /* Print styles: landscape, start at grid, single page fit */
+      /* Print & on-screen print preview: normal flow, no fixed heights */
       @media print {
-        /* Target Letter landscape; restore standard margins */
-        @page { size: 11in 8.5in; margin: 0.4in; }
-        html, body { width: 11in; height: 8.5in; margin: 0 !important; padding: 0 !important; }
-        * { box-shadow: none !important; }
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page { size: landscape; margin: 0.4in; }
+      }
+      /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
+      /* Shared rules for real print and on-screen "print-preview" mode */
+      @media print { .print-only { display: block !important; } }
+      .print-preview .print-only { display: block !important; }
+      .print-preview .navbar, .print-preview .week-main > .d-flex, .print-preview .alert { display: none !important; }
+      @media print {
+        html, body { margin: 0 !important; padding: 0 !important; }
+      }
+      @media print, screen {
+        .print-preview .container-fluid { padding: 0 !important; margin: 0 !important; }
+        @media print { .container-fluid { padding: 0 !important; margin: 0 !important; } }
         /* Force white backgrounds and remove any background images */
-        html, body, .week-grid, .day-card, .axis-content, .day-content, .day-col, .time-axis, .day-body, .card, .card-body {
+        .print-preview html, .print-preview body,
+        .print-preview .week-grid, .print-preview .day-card, .print-preview .axis-content, .print-preview .day-content,
+        .print-preview .day-col, .print-preview .time-axis, .print-preview .day-body, .print-preview .card, .print-preview .card-body {
           background-color: #fff !important; background-image: none !important;
         }
-        /* Hide chrome above the grid */
-        .navbar, .week-main > .d-flex, .alert { display: none !important; }
-        /* Position the printable region exactly within page margins */
-        .week-main {
-          position: fixed !important; /* lock to the first (single) page */
-          top: var(--m); left: var(--m);
-          padding: 0 !important; margin: 0 !important;
-          width: calc(var(--grid-w) + var(--bleed-right)) !important;
-          height: var(--grid-h) !important;
+        @media print {
+          html, body, .week-grid, .day-card, .axis-content, .day-content, .day-col, .time-axis, .day-body, .card, .card-body {
+            background-color: #fff !important; background-image: none !important;
+          }
         }
-        /* Lock the scroll area to one page and clip overflow to avoid page 2 */
-        .week-scroll { overflow: hidden !important; height: calc(var(--grid-h)) !important; margin: 0 !important; }
-        /* Compute exact fit: page width/height minus margins */
-        :root {
-          --page-w: 11in; --page-h: 8.5in; --m: 0.4in;
-          --grid-w: calc(var(--page-w) - 2 * var(--m));
-          /* subtract border + a safety to prevent page 2 */
-          --safety: 0.35in; /* increased buffer for bottom overflow */
-          --grid-h: calc(var(--page-h) - 2 * var(--m) - 2px - var(--safety));
-          --bleed-right: 0.2in;  /* slight right bleed to hide preview gutter */
-          --print-day-header: 0.95in; /* reduce header a touch to gain room */
-          --hour-height: calc((var(--grid-h) - var(--print-day-header)) / (var(--end-hour) - var(--start-hour)));
-        }
-        .week-grid {
-          grid-template-columns: 40px repeat(7, minmax(1px, 1fr));
-          width: calc(var(--grid-w) + var(--bleed-right)) !important;
-          height: var(--grid-h) !important; max-height: var(--grid-h) !important;
-          page-break-inside: avoid;
-          border: 1px solid #000 !important;
-        }
-        .axis-header, .day-header { height: var(--print-day-header) !important; overflow: hidden; }
-        .container-fluid, .week-main, .week-scroll, .week-grid { padding: 0 !important; margin: 0 !important; }
-        .card, .day-card { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-        .hour-line { border-top-color: rgba(0,0,0,0.7) !important; }
-        /* Ensure hour lines are visible in print */
-        .axis-content .hour-line, .day-content .hour-line { display: block !important; }
-        /* Avoid any overflow at the bottom */
-        .week-main { overflow: hidden !important; }
-        .day-col { min-width: 0; }
+        /* Use a conservative fixed per-hour height for print to keep within one page */
+        .print-preview :root { --hour-height: 28px; }
+        @media print { :root { --hour-height: 28px; } }
+        /* Header height in print/preview */
+        .print-preview .axis-header, .print-preview .day-header { height: 100px !important; overflow: hidden; }
+        @media print { .axis-header, .day-header { height: 100px !important; overflow: hidden; } }
+        /* Allow normal flow (no fixed positioning) */
+        body.print-preview { min-height: auto !important; height: auto !important; }
+        .print-preview .week-main, .print-preview .week-scroll { position: static !important; overflow: visible !important; height: auto !important; }
+        @media print { .week-main, .week-scroll { position: static !important; overflow: visible !important; height: auto !important; } }
+        /* Border around entire grid */
+        .print-preview .week-grid { border: 1px solid #000 !important; }
+        @media print { .week-grid { border: 1px solid #000 !important; } }
         /* Vertical separators between days and axis */
-        .time-axis { border-right: 1px solid #000 !important; }
-        .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
+        .print-preview .time-axis { border-right: 1px solid #000 !important; }
+        .print-preview .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
+        @media print {
+          .time-axis { border-right: 1px solid #000 !important; }
+          .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
+        }
+        /* Ensure hour lines are visible */
+        .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
+        @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
         /* Remove tinted event backgrounds for print */
-        .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; }
-        .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
-        /* Position the last (11 PM) label just above the bottom line */
-        .axis-hour-last { transform: translateY(-100%) !important; }
-        .axis-content, .day-content { border-bottom: 0 !important; }
-        .all-day-block { font-size: .65rem; line-height: 1.1; }
-        .all-day-title { font-size: .65rem; line-height: 1.1; }
-        .event-block { padding: .16rem .24rem; font-size: .7rem; }
-        /* show hour lines for print (axis and days) */
-        .axis-content .hour-line, .day-content .hour-line { display: block !important; }
-        /* avoid page breaks around the grid */
-        .week-grid, .week-scroll { break-after: avoid-page; break-before: avoid-page; }
-        /* Ensure no unexpected overflow margins at the bottom */
-        .week-grid { box-sizing: border-box !important; }
-        .day-body, .day-content, .axis-content { box-sizing: border-box !important; }
+        .print-preview .event-block, .print-preview .all-day-block { background: #fff !important; border-color: #000 !important; }
+        @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
+        /* Right-align time labels and position last label above bottom line */
+        .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
+        .print-preview .axis-hour-last { transform: translateY(-100%) !important; }
+        @media print { .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; } }
+        @media print { .axis-hour-last { transform: translateY(-100%) !important; } }
+        /* Smaller text to avoid clipping */
+        .print-preview .all-day-block, .print-preview .all-day-title { font-size: .65rem; line-height: 1.1; }
+        .print-preview .event-block { padding: .16rem .24rem; font-size: .7rem; }
+        @media print { .all-day-block, .all-day-title { font-size: .65rem; line-height: 1.1; } }
+        @media print { .event-block { padding: .16rem .24rem; font-size: .7rem; } }
       }
     </style>
   </head>
-  <body class="bg-light min-vh-100">
+  <body class="bg-light min-vh-100<?= $printMode ? ' print-preview' : '' ?>">
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
       <div class="container-fluid">
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
+          <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1">Preview</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
