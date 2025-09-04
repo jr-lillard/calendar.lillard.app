@@ -301,21 +301,29 @@ if ($printMode) {
         /* Ensure axis header has no extra border in print */
         .axis-header { border: 0 !important; }
         /* Ensure grid fits width and prints a reliable outer edge.
-           Use width fudge (var(--print-width-safety)) with !important so paper reflects FitW.
-           Draw the outer edge as an inset stroke so the far-right line prints even at full width. */
+           Use width fudge (var(--print-width-safety)) with !important so paper reflects FitW. */
         .week-grid {
           width: calc(100% - var(--print-width-safety)) !important;
           box-sizing: border-box !important;
           border: 0 !important;
           outline: 0 !important;
-          /* Keep a subtle inner stroke, but also draw a dedicated
-             right-edge line inset so printers do not clip it */
+          /* Keep a subtle inner stroke for top/left/bottom */
           box-shadow: inset 0 0 0 1px #000 !important;
           position: relative !important;
           margin-left: 0 !important;
           margin-right: auto !important;
         }
-        /* Right edge handled by inset box-shadow; no extra right-edge pseudo element in print */
+        /* Dedicated right-edge line drawn inside the grid so printers don't clip it */
+        .week-grid::after {
+          content: '';
+          position: absolute;
+          top: 0; bottom: 0;
+          /* Slightly inset so it is safely within the printable area */
+          right: 0.06in;
+          width: 2px;
+          background: #000;
+          pointer-events: none;
+        }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
@@ -372,6 +380,16 @@ if ($printMode) {
         /* Border around entire grid */
       /* Draw the outer stroke as an inset so the far-right edge prints reliably */
       .print-preview .week-grid { box-shadow: inset 0 0 0 1px #000 !important; position: relative !important; }
+      /* Mirror the dedicated right-edge line in on-screen print preview */
+      .print-preview .week-grid::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        right: 0.06in;
+        width: 2px;
+        background: #000;
+        pointer-events: none;
+      }
       /* No extra right-edge pseudo element in preview; rely on inset box-shadow only */
       @media print { .week-grid { box-shadow: inset 0 0 0 1px #000 !important; break-inside: avoid; page-break-inside: avoid; } }
       /* Allow manual width adjustment with --print-width-safety (inches) */
