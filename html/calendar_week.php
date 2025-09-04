@@ -300,9 +300,32 @@ if ($printMode) {
         .card, .day-card, .card-header { border: 0 !important; border-radius: 0 !important; }
         /* Ensure axis header has no extra border in print */
         .axis-header { border: 0 !important; }
-        /* Ensure grid fits width and prints a reliable outer border.
-           Use width fudge (var(--print-width-safety)) with !important so paper reflects FitW. */
-        .week-grid { width: calc(100% - var(--print-width-safety)) !important; box-sizing: border-box !important; border: 0 !important; outline: 1px solid #000 !important; outline-offset: -1px !important; margin-left: 0 !important; margin-right: auto !important; }
+        /* Ensure grid fits width and prints a reliable outer edge.
+           Use width fudge (var(--print-width-safety)) with !important so paper reflects FitW.
+           Draw the outer edge as an inset stroke so the far-right line prints even at full width. */
+        .week-grid {
+          width: calc(100% - var(--print-width-safety)) !important;
+          box-sizing: border-box !important;
+          border: 0 !important;
+          outline: 0 !important;
+          /* Keep a subtle inner stroke, but also draw a dedicated
+             right-edge line inset so printers do not clip it */
+          box-shadow: inset 0 0 0 1px #000 !important;
+          position: relative !important;
+          margin-left: 0 !important;
+          margin-right: auto !important;
+        }
+        /* Strong, high-contrast inner right edge to ensure it prints */
+        .week-grid::after {
+          content: '';
+          position: absolute;
+          top: var(--header-height);
+          bottom: 0;
+          right: 0.06in; /* inset so it's not at the physical page edge */
+          width: 0;
+          border-right: 2px solid #000;
+          pointer-events: none;
+        }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
@@ -357,9 +380,20 @@ if ($printMode) {
         .print-preview .card, .print-preview .day-card { box-shadow: none !important; }
         @media print { .card, .day-card { box-shadow: none !important; } }
         /* Border around entire grid */
-      /* Use outline so the outer stroke never affects measured width */
-      .print-preview .week-grid { outline: 1px solid #000 !important; }
-      @media print { .week-grid { outline: 1px solid #000 !important; break-inside: avoid; page-break-inside: avoid; } }
+      /* Draw the outer stroke as an inset so the far-right edge prints reliably */
+      .print-preview .week-grid { box-shadow: inset 0 0 0 1px #000 !important; position: relative !important; }
+      /* Mirror the print inner right-edge line during on-screen preview */
+      .print-preview .week-grid::after {
+        content: '';
+        position: absolute;
+        top: var(--header-height);
+        bottom: 0;
+        right: 0.06in;
+        width: 0;
+        border-right: 2px solid #000;
+        pointer-events: none;
+      }
+      @media print { .week-grid { box-shadow: inset 0 0 0 1px #000 !important; break-inside: avoid; page-break-inside: avoid; } }
       /* Allow manual width adjustment with --print-width-safety (inches) */
       .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
       @media print { .week-grid { width: calc(100% - var(--print-width-safety)) !important; margin-left: 0 !important; margin-right: auto !important; } }
@@ -369,6 +403,8 @@ if ($printMode) {
         @media print {
           .time-axis { border-right: 1px solid #000 !important; }
           .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
+          /* Thicker last-column edge as a secondary safeguard */
+          .week-grid .day-col:last-child .day-card { border-right: 2px solid #000 !important; }
         }
         /* Ensure hour lines are visible */
         .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
@@ -376,8 +412,8 @@ if ($printMode) {
         /* Remove tinted event backgrounds for print */
         .print-preview .event-block, .print-preview .all-day-block { background: #fff !important; border-color: #000 !important; }
         /* Extra spacing below all‑day blocks in preview/print */
-        .print-preview .all-day-row { padding-bottom: 0.20in !important; }
-        @media print { .all-day-row { padding-bottom: 0.20in !important; } }
+        .print-preview .all-day-row { padding-bottom: 0.30in !important; }
+        @media print { .all-day-row { padding-bottom: 0.30in !important; } }
         @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
         /* Right-align time labels; all labels sit just below their hour line */
         .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
