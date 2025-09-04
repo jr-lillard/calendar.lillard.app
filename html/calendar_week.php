@@ -315,17 +315,7 @@ if ($printMode) {
           margin-left: 0 !important;
           margin-right: auto !important;
         }
-        /* Strong, high-contrast inner right edge to ensure it prints */
-        .week-grid::after {
-          content: '';
-          position: absolute;
-          top: var(--header-height);
-          bottom: 0;
-          right: 0.06in; /* inset so it's not at the physical page edge */
-          width: 0;
-          border-right: 2px solid #000;
-          pointer-events: none;
-        }
+        /* Right edge handled by inset box-shadow; no extra right-edge pseudo element in print */
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
@@ -382,17 +372,7 @@ if ($printMode) {
         /* Border around entire grid */
       /* Draw the outer stroke as an inset so the far-right edge prints reliably */
       .print-preview .week-grid { box-shadow: inset 0 0 0 1px #000 !important; position: relative !important; }
-      /* Mirror the print inner right-edge line during on-screen preview */
-      .print-preview .week-grid::after {
-        content: '';
-        position: absolute;
-        top: var(--header-height);
-        bottom: 0;
-        right: 0.06in;
-        width: 0;
-        border-right: 2px solid #000;
-        pointer-events: none;
-      }
+      /* No extra right-edge pseudo element in preview; rely on inset box-shadow only */
       @media print { .week-grid { box-shadow: inset 0 0 0 1px #000 !important; break-inside: avoid; page-break-inside: avoid; } }
       /* Allow manual width adjustment with --print-width-safety (inches) */
       .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
@@ -403,8 +383,6 @@ if ($printMode) {
         @media print {
           .time-axis { border-right: 1px solid #000 !important; }
           .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
-          /* Thicker last-column edge as a secondary safeguard */
-          .week-grid .day-col:last-child .day-card { border-right: 2px solid #000 !important; }
         }
         /* Ensure hour lines are visible */
         .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
