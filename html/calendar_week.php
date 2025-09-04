@@ -273,7 +273,23 @@ if ($printMode) {
       .axis-content .hour-line, .day-content .hour-line { display: none; }
       .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
       /* Apply width fudge in on‑screen print preview so it mirrors paper */
-      .print-preview .print-frame { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; border: 2px solid #000; box-sizing: border-box; }
+      .print-preview .print-frame {
+        width: calc(100% - var(--print-width-safety));
+        margin-left: 0 !important;
+        margin-right: auto !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      /* Draw an inset preview border via pseudo-element so we see exactly what will print */
+      .print-preview .print-frame::before {
+        content: "";
+        position: absolute;
+        /* Small inset to keep the border fully visible in preview */
+        top: 0.06in; left: 0.06in; right: 0.06in; bottom: 0.06in;
+        border: 2px solid #000;
+        box-sizing: border-box;
+        pointer-events: none;
+      }
       @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
@@ -379,6 +395,23 @@ if ($printMode) {
       /* Remove any preview pseudo edges */
       .print-preview .week-grid::after { content: none !important; }
       @media print { .week-grid { border: 0 !important; box-sizing: border-box !important; break-inside: avoid; page-break-inside: avoid; } }
+      /* Ensure the print frame draws a true inset border on all four sides on paper */
+      @media print {
+        .print-frame {
+          width: calc(100% - var(--print-width-safety)) !important;
+          position: relative !important;
+          box-sizing: border-box !important;
+        }
+        .print-frame::before {
+          content: "";
+          position: absolute;
+          /* Inset the border slightly so bottom/right never clip on the printer */
+          top: 0.06in; left: 0.06in; right: 0.06in; bottom: 0.06in;
+          border: 2px solid #000;
+          box-sizing: border-box;
+          pointer-events: none;
+        }
+      }
       /* Allow manual width adjustment with --print-width-safety (inches) on the frame; grid stays 100% */
       .print-preview .week-grid { width: 100% !important; }
       @media print { .week-grid { width: 100% !important; } }
