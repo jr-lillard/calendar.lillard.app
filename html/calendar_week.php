@@ -376,8 +376,8 @@ if ($printMode) {
         /* Remove tinted event backgrounds for print */
         .print-preview .event-block, .print-preview .all-day-block { background: #fff !important; border-color: #000 !important; }
         /* Extra spacing below all‑day blocks in preview/print */
-        .print-preview .all-day-row { padding-bottom: 0.12in !important; }
-        @media print { .all-day-row { padding-bottom: 0.12in !important; } }
+        .print-preview .all-day-row { padding-bottom: 0.20in !important; }
+        @media print { .all-day-row { padding-bottom: 0.20in !important; } }
         @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
         /* Right-align time labels; all labels sit just below their hour line */
         .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
@@ -395,6 +395,12 @@ if ($printMode) {
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
       <div class="container-fluid">
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
+        <?php
+          // Show a small build tag to verify live version (preview/screen only; hidden in print)
+          $build = @trim((string)@shell_exec('git -C '.escapeshellarg(dirname(__DIR__)).' rev-parse --short HEAD 2>/dev/null'));
+          if ($build !== ''): ?>
+            <span class="badge rounded-pill text-bg-light ms-2 d-none d-sm-inline">Build <?= h($build) ?></span>
+        <?php endif; ?>
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
