@@ -273,7 +273,7 @@ if ($printMode) {
       .axis-content .hour-line, .day-content .hour-line { display: none; }
       .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
       /* Apply width fudge in on‑screen print preview so it mirrors paper */
-      .print-preview .print-frame { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
+      .print-preview .print-frame { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; border: 2px solid #000; box-sizing: border-box; }
       @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
@@ -374,14 +374,14 @@ if ($printMode) {
         .print-preview .card, .print-preview .day-card { box-shadow: none !important; }
         @media print { .card, .day-card { box-shadow: none !important; } }
         /* Border around entire grid */
-      /* Draw a real border that prints reliably; ensure border is inside the box */
-      .print-preview .week-grid { border: 2px solid #000 !important; box-sizing: border-box !important; position: relative !important; }
+      /* Draw border on the print frame (not the grid) so it encloses headers and columns */
+      .print-preview .week-grid { border: 0 !important; box-sizing: border-box !important; position: relative !important; }
       /* Remove any preview pseudo edges */
       .print-preview .week-grid::after { content: none !important; }
-      @media print { .week-grid { border: 2px solid #000 !important; box-sizing: border-box !important; break-inside: avoid; page-break-inside: avoid; } }
-      /* Allow manual width adjustment with --print-width-safety (inches) and account for border via border-box */
-      .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
-      @media print { .week-grid { width: calc(100% - var(--print-width-safety)) !important; margin-left: 0 !important; margin-right: auto !important; } }
+      @media print { .week-grid { border: 0 !important; box-sizing: border-box !important; break-inside: avoid; page-break-inside: avoid; } }
+      /* Allow manual width adjustment with --print-width-safety (inches) on the frame; grid stays 100% */
+      .print-preview .week-grid { width: 100% !important; }
+      @media print { .week-grid { width: 100% !important; } }
         /* Vertical separators between days and axis */
         .print-preview .time-axis { border-right: 1px solid #000 !important; }
         .print-preview .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
@@ -468,7 +468,7 @@ if ($printMode) {
       <div class="week-scroll">
         <div class="print-frame">
           <div class="week-grid">
-          <div class="time-axis">
+            <div class="time-axis">
             <div class="axis-header"></div>
             <div class="axis-content">
               <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<$endHour; $h++): ?>
@@ -482,9 +482,8 @@ if ($printMode) {
               <!-- bottom boundary line for axis (print-visible) -->
               <div class="hour-line" style="bottom: 0;"></div>
             </div>
-          </div>
-        </div>
-          <?php
+            </div>
+            <?php
             // Prepare day structures with all-day vs timed events and computed positions
             $startHour = 7; $endHour = 24;
             foreach ($days as $ymd => $evs):
@@ -607,7 +606,8 @@ if ($printMode) {
                 </div>
               </div>
             </div>
-          <?php endforeach; ?>
+            <?php endforeach; ?>
+          </div>
         </div>
       </div>
     </main>
