@@ -212,13 +212,17 @@ if ($printMode) {
       .week-main { display: flex; flex-direction: column; min-height: 0; }
 
       .week-scroll { overflow: auto; flex: 1 1 auto; min-height: 0; }
+      /* Grid container (inside print frame) */
       .week-grid {
         display: grid;
         grid-template-columns: 60px repeat(7, minmax(180px, 1fr));
         gap: 0;
         align-items: stretch;
-        height: 100%;
+        height: 100%; /* fill the frame */
       }
+
+      /* Frame that carries the printable border on all four sides */
+      .print-frame { width: 100%; }
       .time-axis { position: relative; display: grid; grid-template-rows: auto 1fr; }
       .axis-header { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.075); height: var(--header-height); }
       .axis-content {
@@ -269,7 +273,7 @@ if ($printMode) {
       .axis-content .hour-line, .day-content .hour-line { display: none; }
       .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
       /* Apply width fudge in on‑screen print preview so it mirrors paper */
-      .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
+      .print-preview .print-frame { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
       @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
@@ -300,19 +304,21 @@ if ($printMode) {
         .card, .day-card, .card-header { border: 0 !important; border-radius: 0 !important; }
         /* Ensure axis header has no extra border in print */
         .axis-header { border: 0 !important; }
-        /* Ensure grid fits width and prints a reliable outer edge.
-           Use a real border (inset via border-box) so all sides print. */
-        .week-grid {
+        /* Draw a reliable frame border in print; put it on a wrapper so it isn't clipped */
+        .print-frame {
           width: calc(100% - var(--print-width-safety)) !important;
           box-sizing: border-box !important;
           border: 2px solid #000 !important;
-          outline: 0 !important;
           position: relative !important;
           margin-left: 0 !important;
           margin-right: auto !important;
+          height: var(--print-content-h) !important;
         }
-        /* No extra right-edge pseudo element in print */
-        .week-grid::after { content: none !important; }
+        /* Grid fills the frame in print */
+        .week-grid {
+          height: 100% !important;
+          width: 100% !important;
+        }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
@@ -334,7 +340,8 @@ if ($printMode) {
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
       .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
-      .print-preview .week-grid { height: var(--print-content-h) !important; }
+      .print-preview .print-frame { height: var(--print-content-h) !important; }
+      .print-preview .week-grid { height: 100% !important; }
       .print-preview .day-card { height: 100% !important; }
       .print-preview .day-body { height: calc(var(--print-content-h) - var(--header-height)) !important; }
       .print-preview .axis-content, .print-preview .day-content { height: 100% !important; }
@@ -459,7 +466,8 @@ if ($printMode) {
       <?php endif; ?>
 
       <div class="week-scroll">
-        <div class="week-grid">
+        <div class="print-frame">
+          <div class="week-grid">
           <div class="time-axis">
             <div class="axis-header"></div>
             <div class="axis-content">
@@ -475,6 +483,7 @@ if ($printMode) {
               <div class="hour-line" style="bottom: 0;"></div>
             </div>
           </div>
+        </div>
           <?php
             // Prepare day structures with all-day vs timed events and computed positions
             $startHour = 7; $endHour = 24;
