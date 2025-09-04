@@ -268,6 +268,8 @@ if ($printMode) {
       /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
       .axis-content .hour-line, .day-content .hour-line { display: none; }
       .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
+      /* Apply width fudge in on‑screen print preview so it mirrors paper */
+      .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
       @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
@@ -280,7 +282,8 @@ if ($printMode) {
           /* use global --print-safety (tunable) */
           --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
-          --header-height: 0.60in;
+          /* Slightly taller header to allow breathing room below all‑day blocks */
+          --header-height: 0.66in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
@@ -297,8 +300,9 @@ if ($printMode) {
         .card, .day-card, .card-header { border: 0 !important; border-radius: 0 !important; }
         /* Ensure axis header has no extra border in print */
         .axis-header { border: 0 !important; }
-        /* Ensure grid fits width and prints a reliable outer border */
-        .week-grid { width: 100% !important; box-sizing: border-box !important; border: 0 !important; outline: 1px solid #000 !important; outline-offset: -1px !important; }
+        /* Ensure grid fits width and prints a reliable outer border.
+           Use width fudge (var(--print-width-safety)) with !important so paper reflects FitW. */
+        .week-grid { width: calc(100% - var(--print-width-safety)) !important; box-sizing: border-box !important; border: 0 !important; outline: 1px solid #000 !important; outline-offset: -1px !important; margin-left: 0 !important; margin-right: auto !important; }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
@@ -358,7 +362,7 @@ if ($printMode) {
       @media print { .week-grid { outline: 1px solid #000 !important; break-inside: avoid; page-break-inside: avoid; } }
       /* Allow manual width adjustment with --print-width-safety (inches) */
       .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
-      @media print { .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; } }
+      @media print { .week-grid { width: calc(100% - var(--print-width-safety)) !important; margin-left: 0 !important; margin-right: auto !important; } }
         /* Vertical separators between days and axis */
         .print-preview .time-axis { border-right: 1px solid #000 !important; }
         .print-preview .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
@@ -371,6 +375,9 @@ if ($printMode) {
         @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
         /* Remove tinted event backgrounds for print */
         .print-preview .event-block, .print-preview .all-day-block { background: #fff !important; border-color: #000 !important; }
+        /* Extra spacing below all‑day blocks in preview/print */
+        .print-preview .all-day-row { padding-bottom: 0.12in !important; }
+        @media print { .all-day-row { padding-bottom: 0.12in !important; } }
         @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
         /* Right-align time labels; all labels sit just below their hour line */
         .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
