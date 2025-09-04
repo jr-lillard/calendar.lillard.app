@@ -187,7 +187,7 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -199,6 +199,11 @@ if ($printMode) {
         if ($fudge !== null) {
             // Emit a CSS override for the print safety variable
             echo ':root{ --print-safety: '.number_format($fudge, 3).'in; }';
+        }
+        // Optional width fudge via ?wfudge (inches). Positive reduces width; negative increases.
+        if (isset($_GET['wfudge'])) {
+            $wf = (float)$_GET['wfudge'];
+            echo ':root{ --print-width-safety: '.number_format($wf, 3).'in; }';
         }
       ?>
       html, body { height: 100%; }
@@ -257,7 +262,7 @@ if ($printMode) {
       }
       .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
-      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .35rem; }
+      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .6rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
@@ -348,8 +353,12 @@ if ($printMode) {
         .print-preview .card, .print-preview .day-card { box-shadow: none !important; }
         @media print { .card, .day-card { box-shadow: none !important; } }
         /* Border around entire grid */
-        .print-preview .week-grid { border: 1px solid #000 !important; }
-        @media print { .week-grid { border: 1px solid #000 !important; break-inside: avoid; page-break-inside: avoid; } }
+      /* Use outline so the outer stroke never affects measured width */
+      .print-preview .week-grid { outline: 1px solid #000 !important; }
+      @media print { .week-grid { outline: 1px solid #000 !important; break-inside: avoid; page-break-inside: avoid; } }
+      /* Allow manual width adjustment with --print-width-safety (inches) */
+      .print-preview .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; }
+      @media print { .week-grid { width: calc(100% - var(--print-width-safety)); margin-left: 0 !important; margin-right: auto !important; } }
         /* Vertical separators between days and axis */
         .print-preview .time-axis { border-right: 1px solid #000 !important; }
         .print-preview .week-grid .day-col + .day-col .day-card { border-left: 1px solid #000 !important; }
@@ -382,13 +391,25 @@ if ($printMode) {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <?php $fudgeParam = $fudge !== null ? $fudge : -2.50; $prevFudge = $fudgeParam - 0.01; $nextFudge = $fudgeParam + 0.01; ?>
-          <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>">Preview</a>
+          <?php 
+            $fudgeParam = $fudge !== null ? $fudge : -2.50; 
+            $prevFudge = $fudgeParam - 0.01; 
+            $nextFudge = $fudgeParam + 0.01;
+            $wfParam = isset($_GET['wfudge']) ? (float)$_GET['wfudge'] : 0.00;
+            $prevWF = $wfParam - 0.01; 
+            $nextWF = $wfParam + 0.01;
+          ?>
+          <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>&wfudge=<?= number_format($wfParam,2) ?>">Preview</a>
           <?php if ($printMode): ?>
-            <div class="btn-group" role="group" aria-label="Fit">
-              <a class="btn btn-outline-primary" id="fitMinus" data-fit="-0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($prevFudge,2) ?>" title="Tighter fit">Fit −</a>
-              <a class="btn btn-outline-primary" id="fitPlus" data-fit="+0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($nextFudge,2) ?>" title="Looser fit">Fit +</a>
+            <div class="btn-group me-2" role="group" aria-label="Fit height">
+              <a class="btn btn-outline-primary" id="fitMinus" data-fit="-0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($prevFudge,2) ?>&wfudge=<?= number_format($wfParam,2) ?>" title="Taller (negative)">Fit −</a>
+              <a class="btn btn-outline-primary" id="fitPlus" data-fit="+0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($nextFudge,2) ?>&wfudge=<?= number_format($wfParam,2) ?>" title="Shorter (positive)">Fit +</a>
               <span class="ms-2 align-self-center small text-muted" id="fitValue" aria-live="polite"></span>
+            </div>
+            <div class="btn-group" role="group" aria-label="Fit width">
+              <a class="btn btn-outline-primary" id="fitWMinus" data-fitw="-0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>&wfudge=<?= number_format($prevWF,2) ?>" title="Wider (negative)">FitW −</a>
+              <a class="btn btn-outline-primary" id="fitWPlus" data-fitw="+0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>&wfudge=<?= number_format($nextWF,2) ?>" title="Narrower (positive)">FitW +</a>
+              <span class="ms-2 align-self-center small text-muted" id="fitWValue" aria-live="polite"></span>
             </div>
           <?php endif; ?>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
@@ -570,6 +591,16 @@ if ($printMode) {
           }
           return -2.50; // default to larger (taller) calendar
         })();
+        // Track current width safety ("wfudge") in inches; positive shrinks width, negative expands
+        let printWidthSafetyIn = (function(){
+          const css = getComputedStyle(document.documentElement);
+          const v = css.getPropertyValue('--print-width-safety').trim();
+          if (v && v.endsWith('in')) {
+            const num = parseFloat(v);
+            if (!isNaN(num)) return num;
+          }
+          return 0.00;
+        })();
 
         function equalizeHeaders() {
           const headers = Array.from(document.querySelectorAll('.day-header'));
@@ -621,6 +652,8 @@ if ($printMode) {
         function updateFudgeDisplay() {
           const el = document.getElementById('fitValue');
           if (el) el.textContent = `Fit: ${printSafetyIn.toFixed(2)}in`;
+          const elW = document.getElementById('fitWValue');
+          if (elW) elW.textContent = `Width: ${printWidthSafetyIn.toFixed(2)}in`;
         }
         function setFudge(valInches) {
           // Allow negative values to make the calendar taller
@@ -635,6 +668,17 @@ if ($printMode) {
           updateFudgeDisplay();
         }
         function nudgeFudge(delta) { setFudge(printSafetyIn + delta); }
+        function setWFudge(valInches) {
+          printWidthSafetyIn = +valInches;
+          document.documentElement.style.setProperty('--print-width-safety', printWidthSafetyIn.toFixed(3) + 'in');
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('wfudge', printWidthSafetyIn.toFixed(2));
+            window.history.replaceState({}, '', url.toString());
+          } catch(e) {}
+          updateFudgeDisplay();
+        }
+        function nudgeWFudge(delta) { setWFudge(printWidthSafetyIn + delta); }
         document.addEventListener('DOMContentLoaded', () => {
           if (document.body.classList.contains('print-preview')) {
             // Initialize display with current CSS var value
@@ -650,6 +694,18 @@ if ($printMode) {
               e.preventDefault();
               const step = e.shiftKey ? 0.05 : 0.01; // hold Shift for bigger step
               nudgeFudge(+step);
+            });
+            const wminus = document.getElementById('fitWMinus');
+            const wplus = document.getElementById('fitWPlus');
+            if (wminus) wminus.addEventListener('click', (e) => {
+              e.preventDefault();
+              const step = e.shiftKey ? 0.05 : 0.01; // hold Shift for bigger step
+              nudgeWFudge(-step);
+            });
+            if (wplus) wplus.addEventListener('click', (e) => {
+              e.preventDefault();
+              const step = e.shiftKey ? 0.05 : 0.01; // hold Shift for bigger step
+              nudgeWFudge(+step);
             });
           }
         });
