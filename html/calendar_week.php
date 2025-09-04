@@ -193,7 +193,8 @@ if ($printMode) {
         $fudge = null;
         if (isset($_GET['fudge'])) {
             $f = (float)$_GET['fudge'];
-            if ($f >= 0.00) { $fudge = $f; }
+            // Allow negative to make the calendar taller; no cap
+            $fudge = $f;
         }
         if ($fudge !== null) {
             // Emit a CSS override for the print safety variable
@@ -377,7 +378,7 @@ if ($printMode) {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <?php $fudgeParam = $fudge !== null ? $fudge : 0.03; $prevFudge = max(0.00, $fudgeParam - 0.01); $nextFudge = $fudgeParam + 0.01; ?>
+          <?php $fudgeParam = $fudge !== null ? $fudge : 0.03; $prevFudge = $fudgeParam - 0.01; $nextFudge = $fudgeParam + 0.01; ?>
           <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>">Preview</a>
           <?php if ($printMode): ?>
             <div class="btn-group" role="group" aria-label="Fit">
@@ -618,8 +619,8 @@ if ($printMode) {
           if (el) el.textContent = `Fit: ${printSafetyIn.toFixed(2)}in`;
         }
         function setFudge(valInches) {
-          // Clamp to non-negative only (no upper cap)
-          printSafetyIn = Math.max(0, +valInches);
+          // Allow negative values to make the calendar taller
+          printSafetyIn = +valInches;
           document.documentElement.style.setProperty('--print-safety', printSafetyIn.toFixed(3) + 'in');
           // Also update URL so a subsequent reload preserves the value
           try {
