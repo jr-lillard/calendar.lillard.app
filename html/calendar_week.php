@@ -187,7 +187,7 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: 0.03in; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -233,8 +233,8 @@ if ($printMode) {
       @media print { .axis-hour { transform: none; } }
 
       .day-col { min-width: 180px; }
-      .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; }
-      .day-header { position: sticky; top: 0; z-index: 1; background: #fff; height: var(--header-height); }
+      .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; border-radius: 0 !important; }
+      .day-header { position: sticky; top: 0; z-index: 1; background: #fff; height: var(--header-height); border-radius: 0 !important; }
       .day-body { position: relative; height: 100%; }
       .day-content {
         position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
@@ -257,7 +257,7 @@ if ($printMode) {
       }
       .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
-      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .25rem; }
+      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .35rem; }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
@@ -289,14 +289,18 @@ if ($printMode) {
         /* Neutralize sticky/overflow in print to prevent layout drift */
         .day-header, .axis-header { position: static !important; overflow: hidden !important; }
         /* Remove Bootstrap card borders that add extra height in print */
-        .card, .day-card, .card-header { border: 0 !important; }
+        .card, .day-card, .card-header { border: 0 !important; border-radius: 0 !important; }
         /* Ensure axis header has no extra border in print */
         .axis-header { border: 0 !important; }
+        /* Ensure grid fits width and prints a reliable outer border */
+        .week-grid { width: 100% !important; box-sizing: border-box !important; border: 0 !important; outline: 1px solid #000 !important; outline-offset: -1px !important; }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
       @media print { .print-only { display: block !important; } }
       .print-preview .print-only { display: block !important; }
+      /* Remove rounded corners on containers (keep on events) */
+      .week-grid, .day-card, .card, .card-header, .day-header { border-radius: 0 !important; }
       /* In on-screen print preview, put labels just below the hour line */
       .print-preview { --label-offset: 4px; }
       /* Keep navbar visible in on-screen preview so Fit buttons are usable */
@@ -378,7 +382,7 @@ if ($printMode) {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <?php $fudgeParam = $fudge !== null ? $fudge : 0.03; $prevFudge = $fudgeParam - 0.01; $nextFudge = $fudgeParam + 0.01; ?>
+          <?php $fudgeParam = $fudge !== null ? $fudge : -2.50; $prevFudge = $fudgeParam - 0.01; $nextFudge = $fudgeParam + 0.01; ?>
           <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>">Preview</a>
           <?php if ($printMode): ?>
             <div class="btn-group" role="group" aria-label="Fit">
@@ -500,7 +504,7 @@ if ($printMode) {
             <div class="day-col">
               <div class="card shadow-sm day-card">
                 <div class="card-header bg-white day-header">
-                  <div class="fw-semibold mb-1"><?= h($d->format('D M j')) ?></div>
+                  <div class="fw-semibold mb-1 text-center"><?= h($d->format('l')) ?> (<?= h($d->format('n')) ?>/<?= h($d->format('j')) ?>)</div>
                   <div class="all-day-row">
                     <?php foreach ($allDay as $ev): $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <?php 
@@ -564,7 +568,7 @@ if ($printMode) {
             const num = parseFloat(v);
             if (!isNaN(num)) return num;
           }
-          return 0.03; // default
+          return -2.50; // default to larger (taller) calendar
         })();
 
         function equalizeHeaders() {
