@@ -196,7 +196,7 @@ if ($printMode) {
         --header-height: auto;
         /* Default safety margin for print height; keep minimal to fill page */
         /* Use a slight negative safety so the grid fully reaches the bottom */
-        --print-safety: -0.06in;
+        --print-safety: 0in;
         --print-width-safety: 0in;
         /* Tighter default gaps to avoid wasting vertical space */
         --top-gap: 0.08in;
@@ -316,12 +316,11 @@ if ($printMode) {
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
       @media print {
-        @page { size: 11in 8.5in landscape; margin: 0.35in; }
+        @page { size: 11in 8.5in; margin: 0; }
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
-          /* Printable height = page height (8.5in) - top/bottom margins (0.7in)
-             use global --print-safety (tunable) to avoid spill */
-          --print-content-h: calc(8.5in - 0.7in - var(--print-safety));
+          /* Printable height = page height (8.5in) minus a small safety */
+          --print-content-h: calc(8.5in - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly leaner header so the grid gets a bit more height */
           --header-height: 0.60in;
@@ -334,7 +333,8 @@ if ($printMode) {
         .week-grid { height: var(--print-content-h) !important; }
         .day-card { height: 100% !important; }
         .day-body { height: calc(var(--print-content-h) - var(--header-height)) !important; }
-        .axis-content, .day-content { height: 100% !important; }
+        /* Subtract the top gap so the 17 hour rows exactly fill the body */
+        .axis-content, .day-content { height: calc(100% - var(--top-gap)) !important; }
         /* Neutralize sticky/overflow in print to prevent layout drift */
         .day-header, .axis-header { position: static !important; overflow: hidden !important; }
         /* Remove Bootstrap card borders that add extra height in print */
@@ -370,10 +370,10 @@ if ($printMode) {
       @media print { .navbar, .week-main > .d-flex, .alert { display: none !important; } }
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
-        /* mirror print sizing (uses same --print-safety as :root) */
-        --print-content-h: calc(8.5in - 0.7in - var(--print-safety));
+        /* Mirror print sizing (no page margins) using same --print-safety */
+        --print-content-h: calc(8.5in - var(--print-safety));
         /* Match print header for consistent spacing with @media print */
-        --header-height: 0.64in;
+        --header-height: 0.60in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
       .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
@@ -381,7 +381,8 @@ if ($printMode) {
       .print-preview .week-grid { height: 100% !important; }
       .print-preview .day-card { height: 100% !important; }
       .print-preview .day-body { height: calc(var(--print-content-h) - var(--header-height)) !important; }
-      .print-preview .axis-content, .print-preview .day-content { height: 100% !important; }
+      /* Mirror the same subtraction in preview so what you see is what prints */
+      .print-preview .axis-content, .print-preview .day-content { height: calc(100% - var(--top-gap)) !important; }
       @media print {
         html, body { margin: 0 !important; padding: 0 !important; }
       }
