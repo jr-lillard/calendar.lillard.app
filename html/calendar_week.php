@@ -194,8 +194,8 @@ if ($printMode) {
         --end-hour: 24;
         --label-offset: 0px;
         --header-height: auto;
-        /* Slightly higher default safety so one-page print is reliable */
-        --print-safety: 0.16in;
+        /* Default safety margin for print height; keep minimal to fill page */
+        --print-safety: 0.00in;
         --print-width-safety: 0in;
         /* Tighter default gaps to avoid wasting vertical space */
         --top-gap: 0.08in;
@@ -319,9 +319,8 @@ if ($printMode) {
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
           /* Printable height = page height (8.5in) - top/bottom margins (0.7in)
-             Subtract 2px for outer grid border and a tiny safety fudge to avoid spill */
-          /* use global --print-safety (tunable) */
-          --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
+             use global --print-safety (tunable) to avoid spill */
+          --print-content-h: calc(8.5in - 0.7in - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly taller header to allow breathing room below all‑day blocks */
           --header-height: 0.64in;
@@ -371,7 +370,7 @@ if ($printMode) {
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
         /* mirror print sizing (uses same --print-safety as :root) */
-        --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
+        --print-content-h: calc(8.5in - 0.7in - var(--print-safety));
         /* Match print header for consistent spacing with @media print */
         --header-height: 0.64in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
