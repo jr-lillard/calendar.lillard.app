@@ -187,7 +187,8 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.10in; --print-width-safety: 0in; --top-gap: 0.12in; --allday-gap: 0.18in; }
+      /* Default print/preview tuning: keep to one page with modest gaps */
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: 0.10in; --print-width-safety: 0in; --top-gap: 0.10in; --allday-gap: 0.16in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -308,7 +309,7 @@ if ($printMode) {
           --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly taller header to allow breathing room below all‑day blocks */
-          --header-height: 0.66in;
+          --header-height: 0.64in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
