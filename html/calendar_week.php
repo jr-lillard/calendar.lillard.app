@@ -195,7 +195,8 @@ if ($printMode) {
         --label-offset: 0px;
         --header-height: auto;
         /* Default safety margin for print height; keep minimal to fill page */
-        --print-safety: 0.00in;
+        /* Use a slight negative safety so the grid fully reaches the bottom */
+        --print-safety: -0.06in;
         --print-width-safety: 0in;
         /* Tighter default gaps to avoid wasting vertical space */
         --top-gap: 0.08in;
@@ -322,8 +323,8 @@ if ($printMode) {
              use global --print-safety (tunable) to avoid spill */
           --print-content-h: calc(8.5in - 0.7in - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
-          /* Slightly taller header to allow breathing room below all‑day blocks */
-          --header-height: 0.64in;
+          /* Slightly leaner header so the grid gets a bit more height */
+          --header-height: 0.60in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
