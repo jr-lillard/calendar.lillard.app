@@ -188,7 +188,19 @@ if ($printMode) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
       /* Default print/preview tuning: keep to one page with modest gaps */
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: 0.10in; --print-width-safety: 0in; --top-gap: 0.10in; --allday-gap: 0.16in; }
+      :root {
+        --hour-height: 56px;
+        --start-hour: 7;
+        --end-hour: 24;
+        --label-offset: 0px;
+        --header-height: auto;
+        /* Slightly higher default safety so one-page print is reliable */
+        --print-safety: 0.16in;
+        --print-width-safety: 0in;
+        /* Tighter default gaps to avoid wasting vertical space */
+        --top-gap: 0.08in;
+        --allday-gap: 0.12in;
+      }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -286,6 +298,9 @@ if ($printMode) {
       /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
       .axis-content .hour-line, .day-content .hour-line { display: none; }
       .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
+      /* In print/preview, rely on explicit hour lines only (disable gradients to avoid misalignment) */
+      .print-preview .axis-content, .print-preview .day-content { background-image: none !important; }
+      @media print { .axis-content, .day-content { background-image: none !important; } }
       /* Apply width fudge in on‑screen print preview so it mirrors paper */
       .print-preview .print-frame {
         width: calc(100% - var(--print-width-safety));
@@ -357,8 +372,8 @@ if ($printMode) {
       body.print-preview {
         /* mirror print sizing (uses same --print-safety as :root) */
         --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
-        /* Match print header for consistent spacing */
-        --header-height: 0.66in;
+        /* Match print header for consistent spacing with @media print */
+        --header-height: 0.64in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
       .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
@@ -488,10 +503,10 @@ if ($printMode) {
             <div class="axis-header"></div>
             <div class="axis-content">
               <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<$endHour; $h++): ?>
-                <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
+                <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * (100% / 17)));"></div>
               <?php endfor; ?>
               <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<=$endHour-1; $h++): $isLast = ($h === $endHour-1); ?>
-                <div class="axis-hour<?= $isLast ? ' axis-hour-last' : '' ?>" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)) + var(--label-offset));">
+                <div class="axis-hour<?= $isLast ? ' axis-hour-last' : '' ?>" style="top: calc((<?= (int)($h - $startHour) ?> * (100% / 17)) + var(--label-offset));">
                   <?= h(fmt_hour_label($h)) ?>
                 </div>
               <?php endfor; ?>
@@ -599,14 +614,23 @@ if ($printMode) {
                 <div class="day-body">
                   <div class="day-content">
                     <?php $startHour = 7; $endHour = 24; for ($h=$startHour; $h<$endHour; $h++): ?>
-                      <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * var(--hour-height)));"></div>
+                      <div class="hour-line" style="top: calc((<?= (int)($h - $startHour) ?> * (100% / 17)));"></div>
                     <?php endfor; ?>
                     <!-- bottom boundary line for 11 PM -->
                     <div class="hour-line" style="bottom: 0;"></div>
-                    <?php foreach ($timed as $t): $ev = $t['ev']; $cols = max(1, (int)($t['cols'] ?? 1)); $col = (int)($t['col'] ?? 0); $clr = css_colors_from_hex($ev['color'] ?? null); ?>
+                    <?php
+                      $totalMinutes = (24 - 7) * 60; // 17 hours * 60
+                      foreach ($timed as $t):
+                        $ev = $t['ev'];
+                        $cols = max(1, (int)($t['cols'] ?? 1));
+                        $col = (int)($t['col'] ?? 0);
+                        $clr = css_colors_from_hex($ev['color'] ?? null);
+                        $topPerc = max(0.0, min(100.0, ($t['top_min'] / $totalMinutes) * 100.0));
+                        $heightPerc = max(0.1, ($t['height_min'] / $totalMinutes) * 100.0);
+                    ?>
                       <div class="event-block" style="
-                        top: calc(<?= (int)$t['top_min'] ?> * var(--hour-height) / 60);
-                        height: calc(<?= (int)$t['height_min'] ?> * var(--hour-height) / 60);
+                        top: <?= number_format($topPerc, 6, '.', '') ?>%;
+                        height: <?= number_format($heightPerc, 6, '.', '') ?>%;
                         left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
                         width: calc((100% / <?= $cols ?>) - 8px);
                         <?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>
