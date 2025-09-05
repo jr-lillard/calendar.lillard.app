@@ -187,7 +187,7 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; --top-gap: 0in; --allday-gap: 0.18in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -226,7 +226,7 @@ if ($printMode) {
       .time-axis { position: relative; display: grid; grid-template-rows: auto 1fr; }
       .axis-header { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.075); height: var(--header-height); }
       .axis-content {
-        position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
+        position: relative; padding-top: var(--top-gap); height: calc((var(--hour-height) * (var(--end-hour) - var(--start-hour))) - var(--top-gap));
         background-color: #fff;
         background-image: repeating-linear-gradient(
           to bottom,
@@ -246,7 +246,7 @@ if ($printMode) {
       .day-header { position: sticky; top: 0; z-index: 1; background: #fff; height: var(--header-height); border-radius: 0 !important; }
       .day-body { position: relative; height: 100%; }
       .day-content {
-        position: relative; height: calc(var(--hour-height) * (var(--end-hour) - var(--start-hour)));
+        position: relative; padding-top: var(--top-gap); height: calc((var(--hour-height) * (var(--end-hour) - var(--start-hour))) - var(--top-gap));
         background-color: #fff;
         background-image: repeating-linear-gradient(
           to bottom,
@@ -267,6 +267,9 @@ if ($printMode) {
       .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .6rem; }
+      /* Extra spacing for all‑day blocks in preview/print */
+      .print-preview .all-day-row { padding-bottom: var(--allday-gap); }
+      @media print { .all-day-row { padding-bottom: var(--allday-gap) !important; } }
       .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
       .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
