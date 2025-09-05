@@ -393,8 +393,8 @@ if ($printMode) {
         .week-grid .day-card .day-header { border-top: 2px solid #000 !important; }
         /* Left edge on the time axis */
         .time-axis { border-left: 2px solid #000 !important; }
-        /* Right edge on the last day column */
-        .week-grid .day-col:last-child .day-card { border-right: 2px solid #000 !important; }
+        /* Right edge on the last day column — slightly thicker to visually match bottom */
+        .week-grid .day-col:last-child .day-card { border-right: 3px solid #000 !important; }
         /* Bottom edge across axis + all days */
         .axis-content { border-bottom: 2px solid #000 !important; }
         .week-grid .day-card .day-content { border-bottom: 2px solid #000 !important; }
@@ -404,7 +404,7 @@ if ($printMode) {
       .print-preview .axis-header { border-top: 2px solid #000 !important; }
       .print-preview .week-grid .day-card .day-header { border-top: 2px solid #000 !important; }
       .print-preview .time-axis { border-left: 2px solid #000 !important; }
-      .print-preview .week-grid .day-col:last-child .day-card { border-right: 2px solid #000 !important; }
+      .print-preview .week-grid .day-col:last-child .day-card { border-right: 3px solid #000 !important; }
       .print-preview .axis-content { border-bottom: 2px solid #000 !important; }
       .print-preview .week-grid .day-card .day-content { border-bottom: 2px solid #000 !important; }
       /* Allow manual width adjustment with --print-width-safety (inches) on the frame; grid stays 100% */
