@@ -280,16 +280,8 @@ if ($printMode) {
         box-sizing: border-box;
         position: relative;
       }
-      /* Draw an inset preview border via pseudo-element so we see exactly what will print */
-      .print-preview .print-frame::before {
-        content: "";
-        position: absolute;
-        /* Small inset to keep the border fully visible in preview */
-        top: 0.06in; left: 0.06in; right: 0.06in; bottom: 0.06in;
-        border: 2px solid #000;
-        box-sizing: border-box;
-        pointer-events: none;
-      }
+      /* Do not draw an outer pseudo-border in preview; we render inner edges instead */
+      .print-preview .print-frame::before { content: none !important; }
       @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
@@ -320,11 +312,10 @@ if ($printMode) {
         .card, .day-card, .card-header { border: 0 !important; border-radius: 0 !important; }
         /* Ensure axis header has no extra border in print */
         .axis-header { border: 0 !important; }
-        /* Draw a reliable frame border in print; put it on a wrapper so it isn't clipped */
+        /* Frame wrapper dimensions (no outer border; we draw inner edges on content) */
         .print-frame {
           width: calc(100% - var(--print-width-safety)) !important;
           box-sizing: border-box !important;
-          border: 2px solid #000 !important;
           position: relative !important;
           margin-left: 0 !important;
           margin-right: auto !important;
@@ -395,23 +386,27 @@ if ($printMode) {
       /* Remove any preview pseudo edges */
       .print-preview .week-grid::after { content: none !important; }
       @media print { .week-grid { border: 0 !important; box-sizing: border-box !important; break-inside: avoid; page-break-inside: avoid; } }
-      /* Ensure the print frame draws a true inset border on all four sides on paper */
+      /* Print strong inner edges so all four sides render reliably */
       @media print {
-        .print-frame {
-          width: calc(100% - var(--print-width-safety)) !important;
-          position: relative !important;
-          box-sizing: border-box !important;
-        }
-        .print-frame::before {
-          content: "";
-          position: absolute;
-          /* Inset the border slightly so bottom/right never clip on the printer */
-          top: 0.06in; left: 0.06in; right: 0.06in; bottom: 0.06in;
-          border: 2px solid #000;
-          box-sizing: border-box;
-          pointer-events: none;
-        }
+        /* Top edge across axis + all days */
+        .axis-header { border-top: 2px solid #000 !important; }
+        .week-grid .day-card .day-header { border-top: 2px solid #000 !important; }
+        /* Left edge on the time axis */
+        .time-axis { border-left: 2px solid #000 !important; }
+        /* Right edge on the last day column */
+        .week-grid .day-col:last-child .day-card { border-right: 2px solid #000 !important; }
+        /* Bottom edge across axis + all days */
+        .axis-content { border-bottom: 2px solid #000 !important; }
+        .week-grid .day-card .day-content { border-bottom: 2px solid #000 !important; }
       }
+
+      /* Mirror inner edges in on-screen preview so it matches print */
+      .print-preview .axis-header { border-top: 2px solid #000 !important; }
+      .print-preview .week-grid .day-card .day-header { border-top: 2px solid #000 !important; }
+      .print-preview .time-axis { border-left: 2px solid #000 !important; }
+      .print-preview .week-grid .day-col:last-child .day-card { border-right: 2px solid #000 !important; }
+      .print-preview .axis-content { border-bottom: 2px solid #000 !important; }
+      .print-preview .week-grid .day-card .day-content { border-bottom: 2px solid #000 !important; }
       /* Allow manual width adjustment with --print-width-safety (inches) on the frame; grid stays 100% */
       .print-preview .week-grid { width: 100% !important; }
       @media print { .week-grid { width: 100% !important; } }
