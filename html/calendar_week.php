@@ -187,7 +187,7 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; --top-gap: 0.10in; --allday-gap: 0.18in; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; --top-gap: 0.20in; --allday-gap: 0.24in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -204,6 +204,16 @@ if ($printMode) {
         if (isset($_GET['wfudge'])) {
             $wf = (float)$_GET['wfudge'];
             echo ':root{ --print-width-safety: '.number_format($wf, 3).'in; }';
+        }
+        // Optional top gap (inches) between all-day header and 7 AM grid via ?topgap=0.20
+        if (isset($_GET['topgap'])) {
+            $tg = (float)$_GET['topgap'];
+            echo ':root{ --top-gap: '.number_format($tg, 3).'in; }';
+        }
+        // Optional all-day bottom gap (inches) via ?adgap=0.24
+        if (isset($_GET['adgap'])) {
+            $ag = (float)$_GET['adgap'];
+            echo ':root{ --allday-gap: '.number_format($ag, 3).'in; }';
         }
       ?>
       html, body { height: 100%; }
@@ -298,7 +308,7 @@ if ($printMode) {
           --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly taller header to allow breathing room below all‑day blocks */
-          --header-height: 0.66in;
+          --header-height: 0.72in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
@@ -346,7 +356,8 @@ if ($printMode) {
       body.print-preview {
         /* mirror print sizing (uses same --print-safety as :root) */
         --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
-        --header-height: 0.60in;
+        /* Match print header for consistent spacing */
+        --header-height: 0.72in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
       .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
