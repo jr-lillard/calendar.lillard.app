@@ -187,7 +187,7 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; --top-gap: 0.20in; --allday-gap: 0.30in; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.10in; --print-width-safety: 0in; --top-gap: 0.12in; --allday-gap: 0.18in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -308,7 +308,7 @@ if ($printMode) {
           --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly taller header to allow breathing room below all‑day blocks */
-          --header-height: 0.72in;
+          --header-height: 0.66in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
@@ -357,7 +357,7 @@ if ($printMode) {
         /* mirror print sizing (uses same --print-safety as :root) */
         --print-content-h: calc(8.5in - 0.7in - 2px - var(--print-safety));
         /* Match print header for consistent spacing */
-        --header-height: 0.72in;
+        --header-height: 0.66in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
       .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
@@ -437,8 +437,8 @@ if ($printMode) {
         /* Remove tinted event backgrounds for print */
         .print-preview .event-block, .print-preview .all-day-block { background: #fff !important; border-color: #000 !important; }
         /* Extra spacing below all‑day blocks in preview/print */
-        .print-preview .all-day-row { padding-bottom: 0.30in !important; }
-        @media print { .all-day-row { padding-bottom: 0.30in !important; } }
+        .print-preview .all-day-row { padding-bottom: var(--allday-gap) !important; }
+        @media print { .all-day-row { padding-bottom: var(--allday-gap) !important; } }
         @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
         /* Right-align time labels; all labels sit just below their hour line */
         .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
