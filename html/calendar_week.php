@@ -187,7 +187,7 @@ if ($printMode) {
     <title><?= h($cal['name']) ?> · Week View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; --top-gap: 0.20in; --allday-gap: 0.24in; }
+      :root { --hour-height: 56px; --start-hour: 7; --end-hour: 24; --label-offset: 0px; --header-height: auto; --print-safety: -2.50in; --print-width-safety: 0in; --top-gap: 0.20in; --allday-gap: 0.30in; }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -456,36 +456,9 @@ if ($printMode) {
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
       <div class="container-fluid">
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
-        <?php
-          // Show a small build tag to verify live version (preview/screen only; hidden in print)
-          $build = @trim((string)@shell_exec('git -C '.escapeshellarg(dirname(__DIR__)).' rev-parse --short HEAD 2>/dev/null'));
-          if ($build !== ''): ?>
-            <span class="badge rounded-pill text-bg-light ms-2 d-none d-sm-inline">Build <?= h($build) ?></span>
-        <?php endif; ?>
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
-          <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
-          <?php 
-            $fudgeParam = $fudge !== null ? $fudge : -2.50; 
-            $prevFudge = $fudgeParam - 0.01; 
-            $nextFudge = $fudgeParam + 0.01;
-            $wfParam = isset($_GET['wfudge']) ? (float)$_GET['wfudge'] : 0.00;
-            $prevWF = $wfParam - 0.01; 
-            $nextWF = $wfParam + 0.01;
-          ?>
-          <a class="btn btn-outline-secondary" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>&wfudge=<?= number_format($wfParam,2) ?>">Preview</a>
-          <?php if ($printMode): ?>
-            <div class="btn-group me-2" role="group" aria-label="Fit height">
-              <a class="btn btn-outline-primary" id="fitMinus" data-fit="-0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($prevFudge,2) ?>&wfudge=<?= number_format($wfParam,2) ?>" title="Taller (negative)">Fit −</a>
-              <a class="btn btn-outline-primary" id="fitPlus" data-fit="+0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($nextFudge,2) ?>&wfudge=<?= number_format($wfParam,2) ?>" title="Shorter (positive)">Fit +</a>
-              <span class="ms-2 align-self-center small text-muted" id="fitValue" aria-live="polite"></span>
-            </div>
-            <div class="btn-group" role="group" aria-label="Fit width">
-              <a class="btn btn-outline-primary" id="fitWMinus" data-fitw="-0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>&wfudge=<?= number_format($prevWF,2) ?>" title="Wider (negative)">FitW −</a>
-              <a class="btn btn-outline-primary" id="fitWPlus" data-fitw="+0.01" href="?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&print=1&fudge=<?= number_format($fudgeParam,2) ?>&wfudge=<?= number_format($nextWF,2) ?>" title="Narrower (positive)">FitW +</a>
-              <span class="ms-2 align-self-center small text-muted" id="fitWValue" aria-live="polite"></span>
-            </div>
-          <?php endif; ?>
+          <button type="button" class="btn btn-outline-secondary" id="btnPrint">Print</button>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
@@ -714,6 +687,12 @@ if ($printMode) {
           }
           computeScreenHourHeight();
         }
+
+        // Hook up one-click Print on the main view
+        document.addEventListener('DOMContentLoaded', () => {
+          const btn = document.getElementById('btnPrint');
+          if (btn) btn.addEventListener('click', () => window.print());
+        });
 
         window.addEventListener('resize', layout);
         document.addEventListener('DOMContentLoaded', layout);
