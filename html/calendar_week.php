@@ -194,8 +194,10 @@ if ($printMode) {
         --end-hour: 24;
         --label-offset: 0px;
         --header-height: auto;
-        /* Default safety margin for print height; slight negative grows the grid to avoid a visible bottom gap */
-        --print-safety: -0.12in;
+        /* Equal page margin used for print/preview sizing (inches) */
+        --page-margin: 0.40in;
+        /* Default safety margin for print height (0 for equal margins on all sides) */
+        --print-safety: 0in;
         --print-width-safety: 0in;
         /* Tighter default gaps to avoid wasting vertical space (affects print/preview only) */
         --top-gap: 0.06in;
@@ -315,12 +317,12 @@ if ($printMode) {
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
       @media print {
-        /* Equal page margins on all sides (adjust if you prefer) */
-        @page { size: 11in 8.5in; margin: 0.40in; }
+        /* Use full page area; we create equal margins inside the frame for consistent results */
+        @page { size: 11in 8.5in; margin: 0; }
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
-          /* Printable height = page height (8.5in) minus top+bottom margins (0.8in) and safety */
-          --print-content-h: calc(8.5in - 0.80in - var(--print-safety));
+          /* Printable height = page height (8.5in) minus equal top+bottom margins and safety */
+          --print-content-h: calc(8.5in - (2 * var(--page-margin)) - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly leaner header so the grid gets a bit more height */
           --header-height: 0.60in;
@@ -343,11 +345,12 @@ if ($printMode) {
         .axis-header { border: 0 !important; }
         /* Frame wrapper dimensions (no outer border; we draw inner edges on content) */
         .print-frame {
-          width: calc(100% - var(--print-width-safety)) !important;
+          /* Equal inner margins all around */
+          margin: var(--page-margin) var(--page-margin) var(--page-margin) var(--page-margin) !important;
+          /* Explicit width within margins (Letter width minus left+right margins and width safety) */
+          width: calc(11in - (2 * var(--page-margin)) - var(--print-width-safety)) !important;
           box-sizing: border-box !important;
           position: relative !important;
-          margin-left: 0 !important;
-          margin-right: auto !important;
           height: var(--print-content-h) !important;
         }
         /* Grid fills the frame in print */
@@ -370,15 +373,19 @@ if ($printMode) {
       @media print { .navbar, .week-main > .d-flex, .alert { display: none !important; } }
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
-        /* Mirror print sizing including equal margins (0.40in on all sides) */
-        --print-content-h: calc(8.5in - 0.80in - var(--print-safety));
-        /* Match print header for consistent spacing with @media print */
+        /* Mirror print sizing: equal margins and height/width inside those margins */
         --header-height: 0.60in;
+        --print-content-h: calc(8.5in - (2 * var(--page-margin)) - var(--print-safety));
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
       }
       .print-preview .container-fluid, .print-preview .week-main { padding: 0 !important; margin: 0 !important; }
-      .print-preview .print-frame { height: var(--print-content-h) !important; }
-      .print-preview .week-grid { height: 100% !important; }
+      .print-preview .print-frame {
+        margin: var(--page-margin) var(--page-margin) var(--page-margin) var(--page-margin) !important;
+        height: var(--print-content-h) !important;
+        width: calc(11in - (2 * var(--page-margin)) - var(--print-width-safety)) !important;
+        box-sizing: border-box !important;
+      }
+      .print-preview .week-grid { height: 100% !important; width: 100% !important; }
       .print-preview .day-card { height: 100% !important; }
       .print-preview .day-body { height: calc(var(--print-content-h) - var(--header-height)) !important; }
       /* Mirror the same subtraction in preview so what you see is what prints */
