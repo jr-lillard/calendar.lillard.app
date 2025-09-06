@@ -34,7 +34,10 @@ if (isset($_GET['ping'])) {
 }
 
 // Minimal access log to aid debugging blank tabs on some browsers
-@file_put_contents('/tmp/calendar_pdf_access.log', sprintf(
+// Try /var/tmp first (writable across reboots), then /tmp
+$__logfile = '/var/tmp/calendar_pdf_access.log';
+if (!@file_put_contents($__logfile, '')) { $__logfile = '/tmp/calendar_pdf_access.log'; }
+@file_put_contents($__logfile, sprintf(
     "%s\t%s\t%s\tcookies=%s\n",
     date('c'),
     $_SERVER['REMOTE_ADDR'] ?? '-',
