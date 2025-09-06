@@ -311,8 +311,8 @@ if ($printMode) {
         box-sizing: border-box;
         position: relative;
       }
-      /* Do not draw an outer pseudo-border in preview; we render inner edges instead */
-      .print-preview .print-frame::before { content: none !important; }
+      /* Draw a real inset border around the frame in preview so you see exactly what will print */
+      .print-preview .print-frame::before { content: ""; position: absolute; inset: 0; border: 2px solid #000; pointer-events: none; }
       @media print { .axis-content .hour-line, .day-content .hour-line { display: block !important; } }
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
@@ -325,7 +325,8 @@ if ($printMode) {
           --print-content-h: calc(8.5in - (2 * var(--page-margin)) - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly leaner header so the grid gets a bit more height */
-          --header-height: 0.60in;
+          /* Slightly shorter header to give the grid more room while keeping all-day readability */
+          --header-height: 0.58in;
           --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
           --label-offset: 4px;
         }
@@ -369,8 +370,8 @@ if ($printMode) {
         /* Recreate day separators without affecting track sizing */
         .week-grid .day-col .day-card { position: relative !important; }
         .week-grid .day-col + .day-col .day-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 1px; background: #000; }
-        /* Single full-height right edge inside the frame */
-        .week-grid::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 2px; background: #000; }
+        /* Outer border on the print frame itself (all four edges) */
+        .print-frame::before { content: ""; position: absolute; inset: 0; border: 2px solid #000; pointer-events: none; }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
