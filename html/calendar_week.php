@@ -357,7 +357,20 @@ if ($printMode) {
         .week-grid {
           height: 100% !important;
           width: 100% !important;
+          position: relative !important; /* allow pseudo edges */
         }
+        /* Draw separators/edges as pseudo elements so borders don't affect layout width */
+        .time-axis { position: relative !important; }
+        .time-axis::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px; background: #000; }
+        /* Remove layout-affecting borders in print */
+        .time-axis { border-right: 0 !important; }
+        .week-grid .day-col + .day-col .day-card { border-left: 0 !important; }
+        .week-grid .day-col:last-child .day-card { border-right: 0 !important; }
+        /* Recreate day separators without affecting track sizing */
+        .week-grid .day-col .day-card { position: relative !important; }
+        .week-grid .day-col + .day-col .day-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 1px; background: #000; }
+        /* Single full-height right edge inside the frame */
+        .week-grid::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 2px; background: #000; }
       }
       /* (intentionally no combined @media; preview rules use .print-preview, print rules use @media print) */
       /* Shared rules for real print and on-screen "print-preview" mode */
