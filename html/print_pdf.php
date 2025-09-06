@@ -34,8 +34,8 @@ if (isset($_GET['ping'])) {
 }
 
 // Minimal access log to aid debugging blank tabs on some browsers
-// Try repo var/ directory (should be writable by www-data on dev), else fallback to /tmp
-$__logfile = realpath(__DIR__.'/..').'/var/pdf_access.log';
+// Try logging under docroot, else /tmp
+$__logfile = __DIR__.'/pdf_access.log';
 if (!@file_put_contents($__logfile, '')) { $__logfile = '/tmp/calendar_pdf_access.log'; }
 @file_put_contents($__logfile, sprintf(
     "%s\t%s\t%s\tcookies=%s\n",
