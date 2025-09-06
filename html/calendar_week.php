@@ -497,6 +497,7 @@ if ($printMode) {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" id="btnPrint">Print</button>
+          <a href="print_pdf.php?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>" class="btn btn-primary" target="_blank" rel="noopener">Download PDF</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
