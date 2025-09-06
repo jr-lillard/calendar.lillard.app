@@ -292,7 +292,10 @@ for ($d=0; $d<7; $d++) {
 }
 
 $file = sprintf('%s_Week_%s.pdf', preg_replace('/[^A-Za-z0-9]+/', '_', (string)$cal['name']), $weekStart->format('Y-m-d'));
-header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="'.$file.'"');
+// Ensure no stray output corrupts the PDF (avoid blank window)
+if (function_exists('ob_get_level')) {
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+}
+// Let FPDF emit appropriate headers and content
 $pdf->Output('I', $file);
 exit;
