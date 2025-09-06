@@ -33,6 +33,15 @@ if (isset($_GET['ping'])) {
     exit;
 }
 
+// Minimal access log to aid debugging blank tabs on some browsers
+@file_put_contents('/tmp/calendar_pdf_access.log', sprintf(
+    "%s\t%s\t%s\tcookies=%s\n",
+    date('c'),
+    $_SERVER['REMOTE_ADDR'] ?? '-',
+    (isset($_GET['ping']) ? 'ping' : (isset($_GET['debug']) ? 'debug' : 'pdf')),
+    isset($_SERVER['HTTP_COOKIE']) ? 'yes' : 'no'
+), FILE_APPEND);
+
 session_start();
 // Allow debug mode without an active session so we can see diagnostics
 $isDebug = isset($_GET['debug']) && $_GET['debug'] !== '0';
@@ -346,5 +355,7 @@ if (function_exists('ob_get_level')) {
     while (ob_get_level() > 0) { @ob_end_clean(); }
 }
 // Let FPDF emit appropriate headers and content
-$pdf->Output('I', $file);
+// Some browsers show a blank tab for inline PDFs; default to download.
+$mode = (isset($_GET['inline']) && $_GET['inline'] !== '0') ? 'I' : 'D';
+$pdf->Output($mode, $file);
 exit;
