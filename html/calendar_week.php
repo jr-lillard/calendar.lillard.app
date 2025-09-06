@@ -194,13 +194,12 @@ if ($printMode) {
         --end-hour: 24;
         --label-offset: 0px;
         --header-height: auto;
-        /* Default safety margin for print height; keep minimal to fill page */
-        /* Use a slight negative safety so the grid fully reaches the bottom */
-        --print-safety: 0in;
+        /* Default safety margin for print height; slight negative grows the grid to avoid a visible bottom gap */
+        --print-safety: -0.12in;
         --print-width-safety: 0in;
-        /* Tighter default gaps to avoid wasting vertical space */
-        --top-gap: 0.08in;
-        --allday-gap: 0.12in;
+        /* Tighter default gaps to avoid wasting vertical space (affects print/preview only) */
+        --top-gap: 0.06in;
+        --allday-gap: 0.10in;
       }
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
