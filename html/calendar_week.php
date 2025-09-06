@@ -316,11 +316,12 @@ if ($printMode) {
 
       /* Print & on-screen print preview: normal flow; inch-accurate sizing for print */
       @media print {
-        @page { size: 11in 8.5in; margin: 0; }
+        /* Equal page margins on all sides (adjust if you prefer) */
+        @page { size: 11in 8.5in; margin: 0.40in; }
         /* Compute per-hour height from printable page height (Letter landscape) */
         :root {
-          /* Printable height = page height (8.5in) minus a small safety */
-          --print-content-h: calc(8.5in - var(--print-safety));
+          /* Printable height = page height (8.5in) minus top+bottom margins (0.8in) and safety */
+          --print-content-h: calc(8.5in - 0.80in - var(--print-safety));
           /* Fixed header height in print to keep all day headers equal */
           /* Slightly leaner header so the grid gets a bit more height */
           --header-height: 0.60in;
@@ -370,8 +371,8 @@ if ($printMode) {
       @media print { .navbar, .week-main > .d-flex, .alert { display: none !important; } }
       /* Mirror print sizing in on-screen preview using CSS inches */
       body.print-preview {
-        /* Mirror print sizing (no page margins) using same --print-safety */
-        --print-content-h: calc(8.5in - var(--print-safety));
+        /* Mirror print sizing including equal margins (0.40in on all sides) */
+        --print-content-h: calc(8.5in - 0.80in - var(--print-safety));
         /* Match print header for consistent spacing with @media print */
         --header-height: 0.60in;
         --hour-height: calc((var(--print-content-h) - var(--header-height)) / 17);
