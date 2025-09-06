@@ -1,7 +1,42 @@
 <?php
 declare(strict_types=1);
+
+// Turn notices into exceptions so we don't silently emit broken output
+set_error_handler(function(int $severity, string $message, string $file = '', int $line = 0): bool {
+    if (!(error_reporting() & $severity)) { return false; }
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+set_exception_handler(function(Throwable $e): void {
+    // Last‑ditch: return plain text so we can see the cause instead of a blank tab
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Cache-Control: no-store');
+    }
+    // Log a brief message to sessions/pdf_error.log (if writable)
+    $log = __DIR__ . '/../sessions/pdf_error.log';
+    $msg = '['.date('c').'] print_pdf error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine()."\n";
+    @file_put_contents($log, $msg, FILE_APPEND);
+    echo "PDF generation failed: ".$e->getMessage();
+    exit;
+});
+
+// Minimal early debug/ping path (before sessions/DB) to diagnose blank output
+if (isset($_GET['ping'])) {
+    if (!headers_sent()) {
+        header('Content-Type: text/plain; charset=UTF-8');
+        header('Cache-Control: no-store');
+    }
+    echo "OK: print_pdf.php reachable\n";
+    echo "PHP: ".PHP_VERSION."\n";
+    echo "GET: ".json_encode($_GET)."\n";
+    exit;
+}
+
 session_start();
-if (!isset($_SESSION['user_id'])) { header('Location: index.php'); exit; }
+// Allow debug mode without an active session so we can see diagnostics
+$isDebug = isset($_GET['debug']) && $_GET['debug'] !== '0';
+if (!isset($_SESSION['user_id']) && !$isDebug) { header('Location: index.php'); exit; }
 
 require __DIR__.'/lib_ics.php';
 require __DIR__.'/lib/fpdf.php';
@@ -71,6 +106,20 @@ try {
     }
 } catch (Throwable $e) {
     $events = [];
+}
+
+// Optional debug mode to quickly verify server-side values instead of a blank viewer
+if ($isDebug) {
+    if (!headers_sent()) { header('Content-Type: text/plain; charset=UTF-8'); }
+    echo "Calendar: ".$cal['name']."\n";
+    echo "Week: ".$weekStart->format('Y-m-d')." .. ".$weekEnd->format('Y-m-d')."\n";
+    echo "Timezone: ".date_default_timezone_get()."\n";
+    $cAll = 0; $cTimed = 0;
+    foreach ($events as $ev) { if (!empty($ev['all_day'])) $cAll++; else $cTimed++; }
+    echo "Events: total=".count($events)." allDay=${cAll} timed=${cTimed}\n";
+    echo "UserID: ".$uid."\n";
+    echo "FPDF present: ".(class_exists('FPDF') ? 'yes' : 'no')."\n";
+    exit;
 }
 
 // Bucket events per day
