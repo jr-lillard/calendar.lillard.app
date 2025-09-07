@@ -497,7 +497,7 @@ if ($printMode) {
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
           <button type="button" class="btn btn-outline-secondary" id="btnPrint">Print</button>
-          <a id="btnPdf" href="print_pdf.php?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>" class="btn btn-primary" rel="noopener">Download PDF</a>
+          <a id="btnPdf" href="print_pdf.php?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&inline=1" class="btn btn-primary" target="_blank" rel="noopener">Open PDF</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
       </div>
@@ -740,42 +740,7 @@ if ($printMode) {
         document.addEventListener('DOMContentLoaded', () => {
           const btn = document.getElementById('btnPrint');
           if (btn) btn.addEventListener('click', () => window.print());
-          // Intercept PDF download so we fetch + save without opening a blank tab
-          const btnPdf = document.getElementById('btnPdf');
-          if (btnPdf) {
-            btnPdf.addEventListener('click', async (e) => {
-              e.preventDefault();
-              try {
-                const url = (e.currentTarget && e.currentTarget.getAttribute) ? e.currentTarget.getAttribute('href') : (btnPdf.getAttribute('href'));
-                if (!url) return window.location.assign(btnPdf.getAttribute('href'));
-                const res = await fetch(url, { credentials: 'same-origin' });
-                if (!res.ok) {
-                  // If server redirected to login or error, just navigate
-                  return window.location.assign(url);
-                }
-                const blob = await res.blob();
-                // Try to extract filename from Content-Disposition
-                let fname = 'Family_Week_View.pdf';
-                const cd = res.headers.get('Content-Disposition');
-                if (cd && /filename\*=UTF-8''([^;\n]+)/i.test(cd)) {
-                  fname = decodeURIComponent(RegExp.$1);
-                } else if (cd && /filename="?([^";\n]+)"?/i.test(cd)) {
-                  fname = RegExp.$1;
-                }
-                const a = document.createElement('a');
-                const objUrl = URL.createObjectURL(blob);
-                a.href = objUrl;
-                a.download = fname;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
-              } catch (err) {
-                // As a fallback, navigate to the endpoint
-                try { window.location.assign(btnPdf.getAttribute('href')); } catch(_) {}
-              }
-            });
-          }
+          // PDF button now opens inline via target="_blank" and &inline=1; no JS interception needed
         });
 
         window.addEventListener('resize', layout);

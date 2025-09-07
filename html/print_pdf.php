@@ -50,7 +50,8 @@ if (isset($_GET['test'])) {
     $pdf->SetFont('Helvetica','',11);
     $pdf->Text(0.60, 1.10, 'This is a minimal PDF generated via FPDF.');
     $pdf->Text(0.60, 1.30, 'If you can see this, FPDF works and headers are correct.');
-    $mode = (isset($_GET['inline']) && $_GET['inline'] !== '0') ? 'I' : 'D';
+    // Default inline for self-test to simplify verification
+    $mode = (isset($_GET['download']) && $_GET['download'] !== '0') ? 'D' : 'I';
     $pdf->Output($mode, 'PDF_Self_Test.pdf');
     exit;
 }
@@ -76,6 +77,14 @@ require __DIR__.'/lib_ics.php';
 require __DIR__.'/lib/fpdf.php';
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+
+// Convert UTF‑8 text to a codepage FPDF can render with core fonts.
+// Prefer Windows‑1252 transliteration and fall back to utf8_decode.
+function pdf_txt(string $s): string {
+    $to = @iconv('UTF-8', 'Windows-1252//TRANSLIT', $s);
+    if ($to === false) { $to = utf8_decode($s); }
+    return $to;
+}
 
 function fetch_url_pdf(string $url): string {
     if (function_exists('curl_init')) {
@@ -229,11 +238,8 @@ for ($i=0; $i<$rows; $i++) {
     $label = date('g A', mktime($h % 24, 0, 0));
     $yText = $gridTop + $i*$rowH + 0.02; // small offset below line
     $pdf->SetXY($originX, $yText);
-    $pdf->Cell($axisW - 0.05, 0.16, $label, 0, 0, 'R');
+    $pdf->Cell($axisW - 0.05, 0.16, pdf_txt($label), 0, 0, 'R');
 }
-// 11 PM label near bottom line
-$pdf->SetXY($originX, $gridTop + $rows*$rowH - 0.18);
-$pdf->Cell($axisW - 0.05, 0.16, '11 PM', 0, 0, 'R');
 
 // Day headers (centered: "Sunday (8/31)") and all‑day blocks
 for ($d=0; $d<7; $d++) {
@@ -244,7 +250,7 @@ for ($d=0; $d<7; $d++) {
     $title = $dowName.' ('.$mmdd.')';
     $pdf->SetFont('Helvetica', 'B', 11);
     $pdf->SetXY($x, $originY + 0.10);
-    $pdf->Cell($dayW, 0.18, $title, 0, 0, 'C');
+    $pdf->Cell($dayW, 0.18, pdf_txt($title), 0, 0, 'C');
 
     // All-day events stacked
     $yAll = $originY + 0.32;
@@ -277,7 +283,7 @@ for ($d=0; $d<7; $d++) {
             $pdf->SetDrawColor(0, 100, 0); $pdf->SetFillColor(220, 245, 230);
             $pdf->Rect($bx, $byy, $bw, $bh, 'D');
             $pdf->SetXY($bx + $pad, $byy + 0.04);
-            $pdf->Cell($bw - 2*$pad, 0.12, $txt);
+            $pdf->Cell($bw - 2*$pad, 0.12, pdf_txt($txt));
             $yAll += $bh + 0.05;
             if ($yAll > $originY + $headerH - 0.05) break; // avoid overflow
         }
@@ -371,7 +377,7 @@ for ($d=0; $d<7; $d++) {
             $pdf->SetFont('Helvetica', '', 9);
             $pdf->SetXY($bx + 0.03, $by + 0.03);
             // Use a clipped cell area
-            $pdf->MultiCell($colW - 0.12, 0.16, $label, 0, 'L');
+            $pdf->MultiCell($colW - 0.12, 0.16, pdf_txt($label), 0, 'L');
         }
     }
 }
@@ -383,6 +389,7 @@ if (function_exists('ob_get_level')) {
 }
 // Let FPDF emit appropriate headers and content
 // Some browsers show a blank tab for inline PDFs; default to download.
-$mode = (isset($_GET['inline']) && $_GET['inline'] !== '0') ? 'I' : 'D';
+// Default to inline viewing while we iterate, allow ?download=1 to force download
+$mode = (isset($_GET['download']) && $_GET['download'] !== '0') ? 'D' : 'I';
 $pdf->Output($mode, $file);
 exit;
