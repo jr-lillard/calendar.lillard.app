@@ -155,14 +155,16 @@ unset($dref);
 
 // ----- PDF drawing with FPDF -----
 $pdf = new FPDF('L', 'in', 'Letter');
-$pdf->SetMargins(0.40, 0.40, 0.40);
+// Store margins locally instead of reading FPDF's protected properties later
+$margin = 0.40; // inches on all sides
+$pdf->SetMargins($margin, $margin, $margin);
 $pdf->SetAutoPageBreak(false);
 $pdf->AddPage();
 
 // Dimensions
-$pageW = $pdf->GetPageWidth() - $pdf->lMargin - $pdf->rMargin; // inside margins
-$pageH = $pdf->GetPageHeight() - $pdf->tMargin - $pdf->bMargin;
-$originX = $pdf->lMargin; $originY = $pdf->tMargin;
+$pageW = $pdf->GetPageWidth() - 2*$margin; // width inside margins
+$pageH = $pdf->GetPageHeight() - 2*$margin; // height inside margins
+$originX = $margin; $originY = $margin;
 
 // Layout constants
 $axisW   = 0.80;            // time axis width
