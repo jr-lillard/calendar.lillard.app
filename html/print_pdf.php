@@ -86,6 +86,78 @@ function pdf_txt(string $s): string {
     return $to;
 }
 
+// Replace Unicode punctuation with ASCII-safe equivalents before feeding to FPDF
+function pdf_sanitize_punct(string $s): string {
+    $map = [
+        "\xE2\x80\x93" => '-', // en dash –
+        "\xE2\x80\x94" => '-', // em dash —
+        "\xE2\x80\x98" => "'", // ‘
+        "\xE2\x80\x99" => "'", // ’
+        "\xE2\x80\x9C" => '"', // “
+        "\xE2\x80\x9D" => '"', // ”
+        "\xE2\x80\xA2" => '-', // •
+        "\xE2\x80\xA6" => '...', // …
+    ];
+    return strtr($s, $map);
+}
+
+// Remove unknown-age placeholders (e.g., "??" or "?? yrs") from summaries
+function pdf_strip_unknown_age(string $s): string {
+    // Strip patterns like " - ??", "– ??", "(??)", "?? yrs"
+    $s = preg_replace('/\s*[\-\xE2\x80\x93\xE2\x80\x94]\s*\?\?\s*(yrs?|years?)?/i', '', $s);
+    $s = preg_replace('/\s*[\(\[]\s*\?\?\s*(yrs?|years?)?\s*[\)\]]/i', '', $s);
+    return (string)$s;
+}
+
+// Birthdate parsing & age computation (PDF-side), mirrors web view
+function pdf_parse_birthdate_from_description(?string $desc, DateTimeZone $tz): array {
+    $desc = (string)$desc;
+    if ($desc === '') return ['date' => null, 'year' => null];
+    // ISO YYYY-MM-DD near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})-(\d{2})-(\d{2})\b/i', $desc, $m)) {
+        $y = (int)$m[2]; $mo = (int)$m[3]; $d = (int)$m[4];
+        try { return ['date' => new DateTimeImmutable(sprintf('%04d-%02d-%02d', $y,$mo,$d), $tz), 'year' => $y]; } catch (Throwable $e) {}
+    }
+    // US MM/DD/YYYY near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i', $desc, $m)) {
+        $mo = (int)$m[2]; $d = (int)$m[3]; $y = (int)$m[4];
+        try { return ['date' => new DateTimeImmutable(sprintf('%04d-%02d-%02d', $y,$mo,$d), $tz), 'year' => $y]; } catch (Throwable $e) {}
+    }
+    // Month name D, YYYY near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^A-Za-z]{0,10}((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*)\s+(\d{1,2}),?\s+(\d{4})/i', $desc, $m)) {
+        $mon = strtolower($m[2]); $d = (int)$m[4]; $y = (int)$m[5];
+        $map = ['jan'=>1,'feb'=>2,'mar'=>3,'apr'=>4,'may'=>5,'jun'=>6,'jul'=>7,'aug'=>8,'sep'=>9,'sept'=>9,'oct'=>10,'nov'=>11,'dec'=>12];
+        $mo = $map[substr($mon,0,4)] ?? ($map[substr($mon,0,3)] ?? null);
+        if ($mo) {
+            try { return ['date' => new DateTimeImmutable(sprintf('%04d-%02d-%02d', $y,$mo,$d), $tz), 'year' => $y]; } catch (Throwable $e) {}
+        }
+    }
+    // Fallback: just a year near keywords
+    if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})\b/i', $desc, $m)) {
+        $y = (int)$m[2];
+        if ($y >= 1900 && $y <= 3000) return ['date' => null, 'year' => $y];
+    }
+    return ['date' => null, 'year' => null];
+}
+
+function pdf_compute_age_for_day(?DateTimeImmutable $birthDate, ?int $birthYear, DateTimeImmutable $onDay): ?int {
+    if ($birthDate instanceof DateTimeImmutable) {
+        $y = (int)$onDay->format('Y');
+        $m = (int)$onDay->format('n');
+        $d = (int)$onDay->format('j');
+        $by = (int)$birthDate->format('Y');
+        $bm = (int)$birthDate->format('n');
+        $bd = (int)$birthDate->format('j');
+        $age = $y - $by;
+        if ($m < $bm || ($m === $bm && $d < $bd)) $age--;
+        return $age;
+    }
+    if (is_int($birthYear)) {
+        return max(0, (int)$onDay->format('Y') - $birthYear);
+    }
+    return null;
+}
+
 // Wrap a UTF‑8 string into at most $maxLines lines that each fit $maxWidth (inches) using the
 // current FPDF font. If text exceeds the space, the last line is ellipsized.
 function pdf_wrap_to_lines(FPDF $pdf, string $utf8, float $maxWidth, int $maxLines): string {
@@ -95,7 +167,7 @@ function pdf_wrap_to_lines(FPDF $pdf, string $utf8, float $maxWidth, int $maxLin
     if ($pdf->GetStringWidth($text) <= $maxWidth || $maxLines === 1) {
         // If single-line and still too long, ellipsize
         if ($pdf->GetStringWidth($text) > $maxWidth) {
-            $ellipsis = pdf_txt('…');
+            $ellipsis = '...';
             while ($text !== '' && $pdf->GetStringWidth($text.$ellipsis) > $maxWidth) {
                 $text = substr($text, 0, -1);
             }
@@ -135,7 +207,7 @@ function pdf_wrap_to_lines(FPDF $pdf, string $utf8, float $maxWidth, int $maxLin
     $origTooLong = ($pdf->GetStringWidth($text) > $maxWidth * $maxLines);
     if ($origTooLong && !empty($lines)) {
         $last = $lines[count($lines)-1];
-        $ellipsis = pdf_txt('…');
+        $ellipsis = '...';
         while ($last !== '' && $pdf->GetStringWidth($last.$ellipsis) > $maxWidth) {
             $last = substr($last, 0, -1);
         }
@@ -283,19 +355,10 @@ for ($d=0; $d<7; $d++) {
     $sum  = 0.0;
     if (!empty($days[$key]['all'])) {
         foreach ($days[$key]['all'] as $ae) {
-            $txt = (string)($ae['summary'] ?? '');
-            // very lightweight age append logic (best effort, same as draw loop)
-            $desc = (string)($ae['description'] ?? '');
-            $by = null; $bm=null; $bd=null;
-            if ($desc !== '') {
-                if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})-(\d{2})-(\d{2})\b/i', $desc, $m)) { $by=(int)$m[2]; $bm=(int)$m[3]; $bd=(int)$m[4]; }
-                elseif (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i', $desc, $m)) { $by=(int)$m[4]; $bm=(int)$m[2]; $bd=(int)$m[3]; }
-                elseif (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})\b/i', $desc, $m)) { $by=(int)$m[2]; }
-            }
-            if ($by) {
-                $yy=(int)$date->format('Y'); $mm=(int)$date->format('n'); $dd=(int)$date->format('j');
-                $age = $yy - $by; if (isset($bm,$bd) && ($mm < $bm || ($mm===$bm && $dd < $bd))) $age--; $txt .= ' · '.$age.' yrs';
-            }
+            $txt = pdf_strip_unknown_age(pdf_sanitize_punct((string)($ae['summary'] ?? '')));
+            $bdinfo = pdf_parse_birthdate_from_description($ae['description'] ?? '', $tz);
+            $age = pdf_compute_age_for_day($bdinfo['date'], $bdinfo['year'], $date);
+            if (is_int($age) && $age >= 0) { $txt .= ' - '.$age.' yrs'; }
             $txtW = $pdf->GetStringWidth(pdf_txt($txt));
             $needLines = 1 + (int)floor($txtW / max(0.01, $bxWidth));
             $needLines = min($maxLines, max(1, $needLines));
@@ -372,26 +435,11 @@ for ($d=0; $d<7; $d++) {
         $totalAll = count($allList);
         foreach ($allList as $idxAll => $ae) {
             $txt = (string)($ae['summary'] ?? '');
-            // Optional: append age for birthdays if detected
-            $age = null;
+            // Optional: append age for birthdays if detected (use same parser as header estimate)
             $desc = (string)($ae['description'] ?? '');
-            $bd = null; $by = null;
-            // Parse birth year using same heuristic as screen view
-            if ($desc !== '') {
-                if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})-(\d{2})-(\d{2})\b/i', $desc, $m)) {
-                    $by = (int)$m[2]; $bm=(int)$m[3]; $bd=(int)$m[4];
-                } elseif (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i', $desc, $m)) {
-                    $by = (int)$m[4]; $bm=(int)$m[2]; $bd=(int)$m[3];
-                } elseif (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})\b/i', $desc, $m)) {
-                    $by = (int)$m[2];
-                }
-                if ($by) {
-                    $yy=(int)$date->format('Y'); $mm=(int)$date->format('n'); $dd=(int)$date->format('j');
-                    $age = $yy - $by;
-                    if (isset($bm,$bd) && ($mm < $bm || ($mm===$bm && $dd < $bd))) $age--;
-                }
-            }
-            if ($age !== null) $txt .= ' · '.$age.' yrs';
+            $bdinfo = pdf_parse_birthdate_from_description($desc, $tz);
+            $age = pdf_compute_age_for_day($bdinfo['date'], $bdinfo['year'], $date);
+            if (is_int($age) && $age >= 0) $txt .= ' - '.$age.' yrs';
 
             // Layout for a single all‑day badge
             $padX = 0.04; $padY = 0.04;
@@ -534,7 +582,8 @@ for ($d=0; $d<7; $d++) {
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
             $sLbl = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
             $eLbl = (new DateTimeImmutable('@'.$eTs))->setTimezone($tz)->format('g:ia');
-            $label = $sLbl.' – '.$eLbl.'  '.(string)($ev['summary'] ?? '');
+            $summary = pdf_sanitize_punct((string)($ev['summary'] ?? ''));
+            $label = $sLbl.' - '.$eLbl.'  '.$summary;
             $pdf->SetFont('Helvetica', '', 9);
             $pdf->SetXY($bx + 0.03, $by + 0.03);
             // Use a clipped cell area
