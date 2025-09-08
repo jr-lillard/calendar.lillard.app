@@ -434,12 +434,11 @@ for ($d=0; $d<7; $d++) {
         $allList = $days[$date->format('Y-m-d')]['all'];
         $totalAll = count($allList);
         foreach ($allList as $idxAll => $ae) {
-            $txt = (string)($ae['summary'] ?? '');
-            // Optional: append age for birthdays if detected (use same parser as header estimate)
+            $summaryRaw = pdf_sanitize_punct((string)($ae['summary'] ?? ''));
             $desc = (string)($ae['description'] ?? '');
             $bdinfo = pdf_parse_birthdate_from_description($desc, $tz);
             $age = pdf_compute_age_for_day($bdinfo['date'], $bdinfo['year'], $date);
-            if (is_int($age) && $age >= 0) $txt .= ' - '.$age.' yrs';
+            $isBirthday = is_int($age) && $age >= 0;
 
             // Layout for a single all‑day badge
             $padX = 0.04; $padY = 0.04;
@@ -447,12 +446,17 @@ for ($d=0; $d<7; $d++) {
             $bw   = max(0.10, $dayW - 0.16);                   // inner width
 
             // Estimate required height based on text width (single line) and allow up to two lines
-            $txtCP = pdf_txt($txt);
             $lineH = 0.12;
             $maxLines = 2;
-            $needLines = 1;
-            if ($pdf->GetStringWidth($txtCP) > ($bw - 2*$padX)) {
-                $needLines = min($maxLines, 1 + (int)floor($pdf->GetStringWidth($txtCP) / max(0.01, ($bw - 2*$padX))));
+            // For birthdays we force two centered lines: summary (1 line, ellipsized) + age on second line
+            if ($isBirthday) {
+                $needLines = 2;
+            } else {
+                $txtCP = pdf_txt($summaryRaw);
+                $needLines = 1;
+                if ($pdf->GetStringWidth($txtCP) > ($bw - 2*$padX)) {
+                    $needLines = min($maxLines, 1 + (int)floor($pdf->GetStringWidth($txtCP) / max(0.01, ($bw - 2*$padX))));
+                }
             }
             $needH = $padY + ($needLines * $lineH) + $padY;    // text + vertical padding
 
@@ -482,15 +486,22 @@ for ($d=0; $d<7; $d++) {
             $pdf->SetFillColor(220, 245, 230);
             $pdf->Rect($bx, $yAll, $bw, $bh, 'D');
 
-            // Text (wrap to at most two lines, ellipsize if necessary)
-            $wrapped = pdf_wrap_to_lines(
-                $pdf,
-                $txt,
-                ($bw - 2*$padX),
-                min($maxLines, max(1, (int)floor(max(0.0, ($bh - 2*$padY)) / $lineH)))
-            );
+            // Text (centered). Birthdays: two lines (summary on first, age on second). Others: wrap up to 2 centered lines.
             $pdf->SetXY($bx + $padX, $yAll + $padY);
-            $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($wrapped), 0, 'L');
+            if ($isBirthday) {
+                $firstLine = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 1); // one line, ellipsized
+                $secondLine = sprintf('%d years old', (int)$age);
+                $content = $firstLine."\n".$secondLine;
+                $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
+            } else {
+                $wrapped = pdf_wrap_to_lines(
+                    $pdf,
+                    $summaryRaw,
+                    ($bw - 2*$padX),
+                    min($maxLines, max(1, (int)floor(max(0.0, ($bh - 2*$padY)) / $lineH)))
+                );
+                $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($wrapped), 0, 'C');
+            }
 
             // Advance to the next badge position with small gap
             $yAll += $bh + 0.04;
