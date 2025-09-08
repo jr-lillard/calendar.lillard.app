@@ -470,21 +470,22 @@ for ($d=0; $d<7; $d++) {
                 if ($remainingCount > 0 && $remain > 0.10) {
                     $moreTxt = "+$remainingCount more";
                     $bh = min(max(0.14, $remain), 0.22);
-                    $pdf->SetDrawColor(120,120,120);
-                    $pdf->SetFillColor(240,240,240);
-                    $pdf->Rect($bx, $yAll, $bw, $bh, 'D');
+                    // Black & white: solid white fill, black border
+                    $pdf->SetDrawColor(0,0,0);
+                    $pdf->SetFillColor(255,255,255);
+                    $pdf->Rect($bx, $yAll, $bw, $bh, 'DF');
                     $pdf->SetXY($bx + $padX, $yAll + ($bh/2) - 0.06);
                     $pdf->SetFont('Helvetica', '', 9);
-                    $pdf->Cell($bw - 2*$padX, 0.12, pdf_txt($moreTxt), 0, 0, 'L');
+                    $pdf->Cell($bw - 2*$padX, 0.12, pdf_txt($moreTxt), 0, 0, 'C');
                 }
                 break;
             }
             $bh = min(max($minH, $needH), $remain);
 
-            // Draw badge box (border only for now)
-            $pdf->SetDrawColor(0, 100, 0);
-            $pdf->SetFillColor(220, 245, 230);
-            $pdf->Rect($bx, $yAll, $bw, $bh, 'D');
+            // Draw badge box (black border, solid white fill)
+            $pdf->SetDrawColor(0,0,0);
+            $pdf->SetFillColor(255,255,255);
+            $pdf->Rect($bx, $yAll, $bw, $bh, 'DF');
 
             // Text (centered). Birthdays: two lines (summary on first, age on second). Others: wrap up to 2 centered lines.
             $pdf->SetXY($bx + $padX, $yAll + $padY);
@@ -577,18 +578,10 @@ for ($d=0; $d<7; $d++) {
             $htFrac  = max(5/($rows*60), ($e['endMin'] - $e['startMin']) / ($rows*60));
             $by = $gridTop + $topFrac * $gridH;
             $bh = $htFrac * $gridH;
-            // Color (if any)
-            $pdf->SetDrawColor(13,110,253); $pdf->SetFillColor(220,235,255);
-            if (!empty($ev['color'])) {
-                $hex = strtoupper((string)$ev['color']);
-                if (preg_match('/^#([0-9A-F]{6})$/', $hex, $m)) {
-                    $r = hexdec(substr($m[1],0,2)); $g = hexdec(substr($m[1],2,2)); $b = hexdec(substr($m[1],4,2));
-                    $pdf->SetDrawColor($r, $g, $b);
-                    // light fill
-                    $pdf->SetFillColor(min(255, $r+100), min(255,$g+100), min(255,$b+100));
-                }
-            }
-            $pdf->Rect($bx, $by, $colW - 0.06, $bh, 'D');
+            // Black & white: solid white fill with black border (ignore event colors)
+            $pdf->SetDrawColor(0,0,0);
+            $pdf->SetFillColor(255,255,255);
+            $pdf->Rect($bx, $by, $colW - 0.06, $bh, 'DF');
             // Text: time range + title
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
             $sLbl = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
