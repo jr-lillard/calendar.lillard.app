@@ -380,6 +380,7 @@ $gridH   = $pageH - $headerH - $topGap; // height of hour grid
 $rowH    = $gridH / $rows;
 
 // Styles
+// Outer frame stays solid black; internal grid lines will be lighter/thinner
 $pdf->SetDrawColor(0,0,0);
 $pdf->SetLineWidth(0.02);
 
@@ -387,22 +388,31 @@ $pdf->SetLineWidth(0.02);
 $pdf->Rect($originX, $originY, $pageW, $pageH);
 
 // Day/axis separators
-// Top header line
+// Top header line (keep strong)
 $pdf->Line($originX, $originY, $originX + $pageW, $originY);
-// Axis right edge and left border already covered by frame; draw axis vertical separator
+// Axis right edge (lightened so labels remain prominent)
+$pdf->SetDrawColor(120,120,120); $pdf->SetLineWidth(0.01);
 $pdf->Line($originX + $axisW, $originY, $originX + $axisW, $originY + $pageH);
-// Day separators
+// Day separators (internal grid: lighter/thinner)
 for ($i=0; $i<=7; $i++) {
     $x = $originX + $axisW + $i*$dayW;
+    // Avoid double-drawing the far right frame: it's already drawn by the outer frame
+    if ($i === 7) { continue; }
     $pdf->Line($x, $originY, $x, $originY + $pageH);
 }
+// Restore default for next sections
+$pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
 
 // Horizontal hour lines (including bottom boundary)
+// Draw lighter/thinner, and extend fully across the time axis so lines appear above labels
 $gridTop = $originY + $headerH + $topGap;
+$pdf->SetDrawColor(120,120,120); $pdf->SetLineWidth(0.01);
 for ($i=0; $i<=$rows; $i++) {
     $y = $gridTop + $i*$rowH;
-    $pdf->Line($originX + $axisW, $y, $originX + $pageW, $y);
+    $pdf->Line($originX, $y, $originX + $pageW, $y);
 }
+// Restore for subsequent shapes
+$pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
 
 // Time labels (right-aligned, placed just below each hour line)
 $pdf->SetFont('Helvetica', '', 10);
@@ -578,6 +588,14 @@ for ($d=0; $d<7; $d++) {
             $htFrac  = max(5/($rows*60), ($e['endMin'] - $e['startMin']) / ($rows*60));
             $by = $gridTop + $topFrac * $gridH;
             $bh = $htFrac * $gridH;
+            // Nudge events that start/stop exactly on the hour so they do not sit on top of hour lines
+            $hourNudge = min(0.02, $rowH * 0.15); // ~0.02in or 15% of row height
+            $startsOnHour = ($e['startMin'] % 60) === 0;
+            $endsOnHour   = ($e['endMin'] % 60) === 0;
+            if ($startsOnHour) { $by += $hourNudge; $bh -= $hourNudge; }
+            if ($endsOnHour)   { $bh -= $hourNudge; }
+            // Ensure minimum visibility
+            if ($bh < 0.10) { $bh = 0.10; }
             // Black & white: solid white fill with black border (ignore event colors)
             $pdf->SetDrawColor(0,0,0);
             $pdf->SetFillColor(255,255,255);
