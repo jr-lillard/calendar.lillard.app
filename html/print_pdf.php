@@ -86,6 +86,64 @@ function pdf_txt(string $s): string {
     return $to;
 }
 
+// Wrap a UTF‑8 string into at most $maxLines lines that each fit $maxWidth (inches) using the
+// current FPDF font. If text exceeds the space, the last line is ellipsized.
+function pdf_wrap_to_lines(FPDF $pdf, string $utf8, float $maxWidth, int $maxLines): string {
+    $maxLines = max(1, $maxLines);
+    $text = pdf_txt($utf8);
+    // Fast path: fits on one line
+    if ($pdf->GetStringWidth($text) <= $maxWidth || $maxLines === 1) {
+        // If single-line and still too long, ellipsize
+        if ($pdf->GetStringWidth($text) > $maxWidth) {
+            $ellipsis = pdf_txt('…');
+            while ($text !== '' && $pdf->GetStringWidth($text.$ellipsis) > $maxWidth) {
+                $text = substr($text, 0, -1);
+            }
+            return $text.$ellipsis;
+        }
+        return $text;
+    }
+    // Word-wrap up to maxLines
+    $words = preg_split('/(\s+)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $lines = [];
+    $current = '';
+    foreach ($words as $tok) {
+        $try = ($current === '') ? $tok : ($current.$tok);
+        if ($pdf->GetStringWidth($try) <= $maxWidth) {
+            $current = $try;
+        } else {
+            if ($current === '') { // a single long token: hard cut
+                $tmp = $tok;
+                while ($tmp !== '' && $pdf->GetStringWidth($tmp) > $maxWidth) {
+                    $tmp = substr($tmp, 0, -1);
+                }
+                $lines[] = $tmp;
+                $current = '';
+            } else {
+                $lines[] = rtrim($current);
+                $current = ltrim($tok);
+            }
+            if (count($lines) >= $maxLines - 1) {
+                break;
+            }
+        }
+    }
+    if ($current !== '' && count($lines) < $maxLines) {
+        $lines[] = rtrim($current);
+    }
+    // If original text didn’t fit in maxLines, ellipsize the last line
+    $origTooLong = ($pdf->GetStringWidth($text) > $maxWidth * $maxLines);
+    if ($origTooLong && !empty($lines)) {
+        $last = $lines[count($lines)-1];
+        $ellipsis = pdf_txt('…');
+        while ($last !== '' && $pdf->GetStringWidth($last.$ellipsis) > $maxWidth) {
+            $last = substr($last, 0, -1);
+        }
+        $lines[count($lines)-1] = $last.$ellipsis;
+    }
+    return implode("\n", $lines);
+}
+
 function fetch_url_pdf(string $url): string {
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
@@ -252,11 +310,15 @@ for ($d=0; $d<7; $d++) {
     $pdf->SetXY($x, $originY + 0.10);
     $pdf->Cell($dayW, 0.18, pdf_txt($title), 0, 0, 'C');
 
-    // All-day events stacked
-    $yAll = $originY + 0.32;
+    // All-day events stacked (kept within header bounds)
+    $headerContentTop = $originY + 0.32;               // below the weekday title
+    $headerContentBottom = $originY + $headerH - 0.08; // a bit more room before the 7AM gap
+    $yAll = $headerContentTop;
     $pdf->SetFont('Helvetica', '', 9);
     if (!empty($days[$date->format('Y-m-d')]['all'])) {
-        foreach ($days[$date->format('Y-m-d')]['all'] as $ae) {
+        $allList = $days[$date->format('Y-m-d')]['all'];
+        $totalAll = count($allList);
+        foreach ($allList as $idxAll => $ae) {
             $txt = (string)($ae['summary'] ?? '');
             // Optional: append age for birthdays if detected
             $age = null;
@@ -278,14 +340,61 @@ for ($d=0; $d<7; $d++) {
                 }
             }
             if ($age !== null) $txt .= ' · '.$age.' yrs';
-            // Draw box
-            $pad = 0.04; $bh = 0.20; $bw = $dayW - 0.12; $bx = $x + 0.06; $byy = $yAll;
-            $pdf->SetDrawColor(0, 100, 0); $pdf->SetFillColor(220, 245, 230);
-            $pdf->Rect($bx, $byy, $bw, $bh, 'D');
-            $pdf->SetXY($bx + $pad, $byy + 0.04);
-            $pdf->Cell($bw - 2*$pad, 0.12, pdf_txt($txt));
-            $yAll += $bh + 0.05;
-            if ($yAll > $originY + $headerH - 0.05) break; // avoid overflow
+
+            // Layout for a single all‑day badge
+            $padX = 0.04; $padY = 0.04;
+            $bx   = $x + 0.08;                                 // a hair more inset so we never touch the day edge
+            $bw   = max(0.10, $dayW - 0.16);                   // inner width
+
+            // Estimate required height based on text width (single line) and allow up to two lines
+            $txtCP = pdf_txt($txt);
+            $lineH = 0.12;
+            $maxLines = 2;
+            $needLines = 1;
+            if ($pdf->GetStringWidth($txtCP) > ($bw - 2*$padX)) {
+                $needLines = min($maxLines, 1 + (int)floor($pdf->GetStringWidth($txtCP) / max(0.01, ($bw - 2*$padX))));
+            }
+            $needH = $padY + ($needLines * $lineH) + $padY;    // text + vertical padding
+
+            // Clamp to remaining space in the header so we never spill into the grid
+            $remain = $headerContentBottom - $yAll;
+            $minH = $padY + $lineH; // at least one line with padding
+            if ($remain < $minH) {
+                // Not enough room for another full badge. If there are remaining items,
+                // draw a compact "+N more" pill that fits, then stop.
+                $remainingCount = $totalAll - $idxAll;
+                if ($remainingCount > 0 && $remain > 0.10) {
+                    $moreTxt = "+$remainingCount more";
+                    $bh = min(max(0.14, $remain), 0.22);
+                    $pdf->SetDrawColor(120,120,120);
+                    $pdf->SetFillColor(240,240,240);
+                    $pdf->Rect($bx, $yAll, $bw, $bh, 'D');
+                    $pdf->SetXY($bx + $padX, $yAll + ($bh/2) - 0.06);
+                    $pdf->SetFont('Helvetica', '', 9);
+                    $pdf->Cell($bw - 2*$padX, 0.12, pdf_txt($moreTxt), 0, 0, 'L');
+                }
+                break;
+            }
+            $bh = min(max($minH, $needH), $remain);
+
+            // Draw badge box (border only for now)
+            $pdf->SetDrawColor(0, 100, 0);
+            $pdf->SetFillColor(220, 245, 230);
+            $pdf->Rect($bx, $yAll, $bw, $bh, 'D');
+
+            // Text (wrap to at most two lines, ellipsize if necessary)
+            $wrapped = pdf_wrap_to_lines(
+                $pdf,
+                $txt,
+                ($bw - 2*$padX),
+                min($maxLines, max(1, (int)floor(max(0.0, ($bh - 2*$padY)) / $lineH)))
+            );
+            $pdf->SetXY($bx + $padX, $yAll + $padY);
+            $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($wrapped), 0, 'L');
+
+            // Advance to the next badge position with small gap
+            $yAll += $bh + 0.04;
+            if ($yAll >= $headerContentBottom) { break; }
         }
     }
 }
