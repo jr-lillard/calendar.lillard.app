@@ -255,14 +255,66 @@ $pageW = $pdf->GetPageWidth() - 2*$margin; // width inside margins
 $pageH = $pdf->GetPageHeight() - 2*$margin; // height inside margins
 $originX = $margin; $originY = $margin;
 
-// Layout constants
+// Layout constants (base)
 $axisW   = 0.80;            // time axis width
-$headerH = 0.60;            // day header + all‑day area
 $topGap  = 0.08;            // gap above 7 AM line
 $rows    = 17;              // 7AM..11PM
+$dayW    = ($pageW - $axisW) / 7.0;
+
+// Dynamically size the header based on all‑day content, but keep the grid readable
+$baseHeaderMin = 0.60;      // minimum header height
+$headerTitleTop = 0.10;     // where the weekday title starts
+$headerContentTopAbs = $originY + 0.32; // below the weekday title (kept constant)
+$headerBottomPad = 0.08;    // breathing room above 7AM grid
+$minRowH = 0.24;            // do not let hour rows get smaller than this
+
+// Compute the maximum header we can use while staying on one page
+$headerMax = max($baseHeaderMin, $pageH - $topGap - ($rows * $minRowH));
+
+// Estimate required header per day from all‑day badges
+$pdf->SetFont('Helvetica', '', 9);
+$padX = 0.04; $padY = 0.04; $lineH = 0.12; $badgeGap = 0.04; $maxLines = 2;
+$bxWidth = max(0.10, $dayW - 0.16) - 2*$padX; // inner text width for a badge
+$neededHeader = $baseHeaderMin;
+for ($d=0; $d<7; $d++) {
+    $date = $weekStart->modify("+{$d} days");
+    $key  = $date->format('Y-m-d');
+    $yAll = $headerContentTopAbs; // absolute y where badges begin
+    $sum  = 0.0;
+    if (!empty($days[$key]['all'])) {
+        foreach ($days[$key]['all'] as $ae) {
+            $txt = (string)($ae['summary'] ?? '');
+            // very lightweight age append logic (best effort, same as draw loop)
+            $desc = (string)($ae['description'] ?? '');
+            $by = null; $bm=null; $bd=null;
+            if ($desc !== '') {
+                if (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})-(\d{2})-(\d{2})\b/i', $desc, $m)) { $by=(int)$m[2]; $bm=(int)$m[3]; $bd=(int)$m[4]; }
+                elseif (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i', $desc, $m)) { $by=(int)$m[4]; $bm=(int)$m[2]; $bd=(int)$m[3]; }
+                elseif (preg_match('/\b(born|birth|dob|b\.)[^\d]{0,10}(\d{4})\b/i', $desc, $m)) { $by=(int)$m[2]; }
+            }
+            if ($by) {
+                $yy=(int)$date->format('Y'); $mm=(int)$date->format('n'); $dd=(int)$date->format('j');
+                $age = $yy - $by; if (isset($bm,$bd) && ($mm < $bm || ($mm===$bm && $dd < $bd))) $age--; $txt .= ' · '.$age.' yrs';
+            }
+            $txtW = $pdf->GetStringWidth(pdf_txt($txt));
+            $needLines = 1 + (int)floor($txtW / max(0.01, $bxWidth));
+            $needLines = min($maxLines, max(1, $needLines));
+            $needH = $padY + ($needLines * $lineH) + $padY;
+            $sum += $needH + $badgeGap;
+        }
+        if ($sum > 0) { $sum -= $badgeGap; } // no gap after last badge
+    }
+    // Total absolute header needed from origin: title + badges + bottom pad
+    $absNeeded = ($headerContentTopAbs - $originY) + $sum + $headerBottomPad;
+    $neededHeader = max($neededHeader, $absNeeded);
+}
+
+// Apply header height within the safe cap
+$headerH = min($headerMax, max($baseHeaderMin, $neededHeader));
+
+// With header fixed, compute grid sizes
 $gridH   = $pageH - $headerH - $topGap; // height of hour grid
 $rowH    = $gridH / $rows;
-$dayW    = ($pageW - $axisW) / 7.0;
 
 // Styles
 $pdf->SetDrawColor(0,0,0);
