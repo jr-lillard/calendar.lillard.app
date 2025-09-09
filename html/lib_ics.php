@@ -58,6 +58,7 @@ function ics_parse_events(string $raw): array {
     $norm = [];
     foreach ($events as $ev) {
         $summary = $ev['SUMMARY']['value'] ?? '';
+        $uid     = $ev['UID']['value'] ?? '';
         $desc = $ev['DESCRIPTION']['value'] ?? '';
         $loc = $ev['LOCATION']['value'] ?? '';
         $startS = $ev['DTSTART']['value'] ?? '';
@@ -97,6 +98,7 @@ function ics_parse_events(string $raw): array {
         }
         $norm[] = [
             'summary' => $summary,
+            'uid' => $uid,
             'description' => $desc,
             'location' => $loc,
             'start_raw' => $startS,

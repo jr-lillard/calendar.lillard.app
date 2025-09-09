@@ -290,6 +290,8 @@ if ($printMode) {
         overflow: hidden;
       }
       .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+      .event-block .hide-pdf-link { color: #6c757d; }
+      .event-block:hover .hide-pdf-link { opacity: 1 !important; }
       .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .6rem; }
       /* Extra spacing for all‑day blocks in preview/print */
@@ -568,6 +570,7 @@ if ($printMode) {
                   'label_end' => $etDT->format('g:ia'),
                   'start_min' => $startMin,
                   'end_min' => $endMin,
+                  'start_ts' => $st,
                 ];
               }
               // Compute overlap columns for timed events
@@ -658,6 +661,7 @@ if ($printMode) {
                         width: calc((100% / <?= $cols ?>) - 8px);
                         <?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>
                       " title="<?= h(($ev['summary'] ?? '') . ' — ' . $t['label_start'] . '–' . $t['label_end']) ?>">
+                        <a href="#" class="hide-pdf-link position-absolute top-0 end-0 px-1 py-0 text-decoration-none small" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" style="opacity:.6">hide</a>
                         <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
                         <div class="fw-semibold small event-title"><?= h($ev['summary'] ?: '(No title)') ?></div>
                         <?php if (!empty($ev['location'])): ?>
@@ -741,6 +745,31 @@ if ($printMode) {
           const btn = document.getElementById('btnPrint');
           if (btn) btn.addEventListener('click', () => window.print());
           // PDF button now opens inline via target="_blank" and &inline=1; no JS interception needed
+          // Hide-from-PDF links
+          const calId = <?= (int)$id ?>;
+          document.querySelectorAll('.hide-pdf-link').forEach(a => {
+            a.addEventListener('click', async (e) => {
+              e.preventDefault();
+              const startTs = +a.getAttribute('data-start');
+              const summary = a.getAttribute('data-summary') || '';
+              try {
+                const res = await fetch('api_pdf_hide.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: new URLSearchParams({ action: 'hide', calendar_id: String(calId), start_ts: String(startTs), summary })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (data && data.ok) {
+                  a.textContent = 'hidden';
+                  a.style.opacity = '1';
+                  a.style.color = '#198754';
+                  setTimeout(()=>{ a.textContent='hide'; a.style.opacity='.6'; a.style.color=''; }, 1200);
+                }
+              } catch (err) {
+                console.warn('hide pdf failed', err);
+              }
+            });
+          });
         });
 
         window.addEventListener('resize', layout);

@@ -281,6 +281,43 @@ try {
     $events = [];
 }
 
+// Optional: per-user hidden-from-PDF events (by start timestamp + summary hash)
+// Ensure table exists
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pdf_hidden_events (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT NOT NULL,
+      calendar_id INT NOT NULL,
+      start_ts INT NOT NULL,
+      summary_hash CHAR(40) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_hide (user_id, calendar_id, start_ts, summary_hash)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+} catch (Throwable $e) { /* ignore table creation errors */ }
+
+// Load hidden set for this user/calendar in the visible week
+$hidden = [];
+try {
+    $q = $pdo->prepare('SELECT start_ts, summary_hash FROM pdf_hidden_events WHERE user_id=? AND calendar_id=? AND start_ts BETWEEN ? AND ?');
+    $q->execute([$uid, $id, $weekStart->getTimestamp(), $weekEnd->getTimestamp()]);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $hidden[(int)$row['start_ts'].'#'.(string)$row['summary_hash']] = true;
+    }
+} catch (Throwable $e) { /* ignore */ }
+
+// Filter events against hidden set
+if ($hidden) {
+    $filtered = [];
+    foreach ($events as $ev) {
+        $st = (int)($ev['start']['ts'] ?? 0);
+        $sum = trim((string)($ev['summary'] ?? ''));
+        $sh  = sha1(strtolower($sum));
+        if (isset($hidden[$st.'#'.$sh])) { continue; }
+        $filtered[] = $ev;
+    }
+    $events = $filtered;
+}
+
 // Optional debug mode to quickly verify server-side values instead of a blank viewer
 if ($isDebug) {
     if (!headers_sent()) { header('Content-Type: text/plain; charset=UTF-8'); }
@@ -571,8 +608,9 @@ for ($d=0; $d<7; $d++) {
     for ($i=0; $i<$n; $i++) { $r = $find($i); $clusters[$r][] = $i; }
 
     $xLeft = $originX + $axisW + $d*$dayW;
-    // Reduce side padding so timed events use a bit more width (less empty space on the right)
-    $usableW = $dayW - 0.08; // padding 0.04 on both sides
+    // Center clusters within the day: use equal side padding on both sides
+    $sidePad = 0.06;                  // equal left/right outer padding
+    $usableW = max(0.10, $dayW - 2*$sidePad);
     foreach ($clusters as $clIdxs) {
         // Order by start
         usort($clIdxs, fn($a,$b)=> $items[$a]['startMin'] <=> $items[$b]['startMin']);
@@ -591,14 +629,15 @@ for ($d=0; $d<7; $d++) {
         // Draw each in cluster
         foreach ($clIdxs as $ii) {
             $e = $items[$ii]; $ev = $e['ev']; $colIdx = $assign[$ii];
-            $bx = $xLeft + 0.04 + $colIdx * $colW;
+            $innerPad = 0.02; // inner per-event horizontal padding
+            $bx = $xLeft + $sidePad + $colIdx * $colW + $innerPad;
             $topFrac = $e['startMin'] / ($rows*60);
             $htFrac  = max(5/($rows*60), ($e['endMin'] - $e['startMin']) / ($rows*60));
             $by = $gridTop + $topFrac * $gridH;
             $bh = $htFrac * $gridH;
             // Nudge events that start/stop exactly on the hour so they do not sit on top of hour lines
             // Increase the offset a touch for clearer separation
-            $hourNudge = min(0.060, $rowH * 0.35); // up to ~0.06in or ~35% of row height
+            $hourNudge = min(0.080, $rowH * 0.45); // slightly larger offset from hour lines
             $startsOnHour = ($e['startMin'] % 60) === 0;
             $endsOnHour   = ($e['endMin'] % 60) === 0;
             if ($startsOnHour) { $by += $hourNudge; $bh -= $hourNudge; }
@@ -610,7 +649,7 @@ for ($d=0; $d<7; $d++) {
             $pdf->SetDrawColor(0,0,0);
             $pdf->SetLineWidth(0.008);
             $pdf->SetFillColor(255,255,255);
-            $pdf->Rect($bx, $by, $colW - 0.04, $bh, 'DF');
+            $pdf->Rect($bx, $by, max(0.02, $colW - 2*$innerPad), $bh, 'DF');
             // Text: time range + title (slightly smaller font per request)
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
             $sLbl = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
