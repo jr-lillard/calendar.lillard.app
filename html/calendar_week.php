@@ -192,7 +192,7 @@ if ($printMode) {
         --hour-height: 56px;
         --start-hour: 7;
         --end-hour: 24;
-        --label-offset: 0px;
+        --label-offset: 4px;
         --header-height: auto;
         /* Equal page margin used for print/preview sizing (inches) */
         --page-margin: 0.40in;
@@ -240,7 +240,8 @@ if ($printMode) {
       /* Grid container (inside print frame) */
       .week-grid {
         display: grid;
-        grid-template-columns: 60px repeat(7, minmax(180px, 1fr));
+        /* Slightly narrower axis and day min widths to fit smaller windows */
+        grid-template-columns: 52px repeat(7, minmax(150px, 1fr));
         gap: 0;
         align-items: stretch;
         height: 100%; /* fill the frame */
@@ -266,7 +267,7 @@ if ($printMode) {
       .print-preview .axis-hour { transform: none; }
       @media print { .axis-hour { transform: none; } }
 
-      .day-col { min-width: 180px; }
+      .day-col { min-width: 150px; }
       .day-card { height: 100%; display: grid; grid-template-rows: auto 1fr; border-radius: 0 !important; }
       .day-header { position: sticky; top: 0; z-index: 1; background: #fff; height: var(--header-height); border-radius: 0 !important; }
       .day-body { position: relative; height: 100%; }
@@ -283,7 +284,8 @@ if ($printMode) {
       }
       .event-block {
         position: absolute; left: 6px; right: 6px;
-        background: rgba(13,110,253,0.15);
+        /* Solid background so grid lines do not show through */
+        background: #fff;
         border: 1px solid rgba(13,110,253,0.5);
         border-radius: .25rem;
         padding: .25rem .4rem;
@@ -295,12 +297,13 @@ if ($printMode) {
       .uber-pill { border: 1px solid #6c757d; border-radius: 8px; padding: 0 4px; text-decoration: none; color: #6c757d; opacity: .6; background: #fff; }
       .uber-pill.active { background: #198754; color: #fff; border-color: #198754; opacity: 1; }
       .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
-      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .6rem; }
+      .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .3rem; }
       /* Extra spacing for all‑day blocks in preview/print */
       .print-preview .all-day-row { padding-bottom: var(--allday-gap); }
       @media print { .all-day-row { padding-bottom: var(--allday-gap) !important; } }
-      .all-day-block { background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .825rem; }
-      .all-day-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+      .all-day-block { background: #fff; border: 1px solid rgba(25,135,84,0.4); border-radius: .25rem; padding: .25rem .4rem; font-size: .8rem; text-align: center; }
+      .all-day-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+      .all-day-age { display: block; font-size: .75rem; color: #6c757d; }
       /* Hide explicit hour lines on screen (use background grid); show them for print/preview */
       .axis-content .hour-line, .day-content .hour-line { display: none; }
       .print-preview .axis-content .hour-line, .print-preview .day-content .hour-line { display: block !important; }
@@ -482,8 +485,10 @@ if ($printMode) {
         .print-preview .all-day-row { padding-bottom: var(--allday-gap) !important; }
         @media print { .all-day-row { padding-bottom: var(--allday-gap) !important; } }
         @media print { .event-block, .all-day-block { background: #fff !important; border-color: #000 !important; } }
-        /* Right-align time labels; all labels sit just below their hour line */
+      /* Right-align time labels; all labels sit just below their hour line */
         .print-preview .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; }
+      /* On screen, also sit labels just below the line for better alignment */
+      .axis-hour { transform: none; }
         @media print { .axis-hour { font-size: 0.65rem; transform: none !important; left: auto !important; right: 6px !important; text-align: right !important; } }
         /* No special transform for last label; keep it below the 11 PM line */
         /* Smaller text to avoid clipping */
@@ -500,7 +505,7 @@ if ($printMode) {
         <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
         <div class="ms-auto d-flex gap-2">
           <a class="btn btn-outline-secondary" href="calendars.php">Back</a>
-          <button type="button" class="btn btn-outline-secondary" id="btnPrint">Print</button>
+          <!-- Print button removed; PDF flow covers print/export use cases -->
           <a id="btnPdf" href="print_pdf.php?id=<?= (int)$cal['id'] ?>&date=<?= h($weekStart->format('Y-m-d')) ?>&inline=1" class="btn btn-primary" target="_blank" rel="noopener">Open PDF</a>
           <a class="btn btn-outline-secondary" href="logout.php">Log out</a>
         </div>
@@ -645,7 +650,7 @@ if ($printMode) {
             <div class="day-col">
               <div class="card shadow-sm day-card">
                 <div class="card-header bg-white day-header">
-                  <div class="fw-semibold mb-1 text-center"><?= h($d->format('l')) ?> (<?= h($d->format('n')) ?>/<?= h($d->format('j')) ?>)</div>
+          <div class="fw-semibold mb-1 text-center" style="font-size:.9rem;"><?= h($d->format('l')) ?> (<?= h($d->format('n')) ?>/<?= h($d->format('j')) ?>)</div>
                   <div class="all-day-row">
                     <?php foreach ($allDay as $ev): $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <?php 
@@ -655,13 +660,13 @@ if ($printMode) {
                         if (!$isHoliday && (str_contains($summaryLC, 'birthday') || str_contains($summaryLC, "b-day") || str_contains($summaryLC, "bday"))) {
                           $bd = parse_birthdate_from_description($ev['description'] ?? '', $tz);
                           $age = compute_age_for_day($bd['date'], $bd['year'], $d);
-                          if (is_int($age) && $age >= 0) { $ageText = ' · ' . $age . ' yrs'; }
+                          if (is_int($age) && $age >= 0) { $ageText = $age . ' years old'; }
                         }
                       ?>
-                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' '.$ageText : '')) ?>" style="<?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>">
-                        <span class="fw-semibold all-day-title"><?= h($ev['summary'] ?: '(No title)') ?><?= h($ageText) ?></span>
-                        <?php if (!empty($ev['location'])): ?>
-                          <span class="text-muted">· <?= h($ev['location']) ?></span>
+                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' - '.$ageText : '')) ?>" style="<?= $clr ? 'border-color: '.$clr['bd'].';' : '' ?>">
+                        <span class="fw-semibold all-day-title"><?= h($ev['summary'] ?: '(No title)') ?></span>
+                        <?php if ($ageText): ?>
+                          <span class="all-day-age"><?= h($ageText) ?></span>
                         <?php endif; ?>
                       </div>
                     <?php endforeach; ?>
@@ -684,22 +689,35 @@ if ($printMode) {
                         $topPerc = max(0.0, min(100.0, ($t['top_min'] / $totalMinutes) * 100.0));
                         $heightPerc = max(0.1, ($t['height_min'] / $totalMinutes) * 100.0);
                     ?>
-                      <div class="event-block" style="
+                      <div class="event-block" data-start-ts="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" style="
                         top: <?= number_format($topPerc, 6, '.', '') ?>%;
                         height: <?= number_format($heightPerc, 6, '.', '') ?>%;
                         left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
                         width: calc((100% / <?= $cols ?>) - 8px);
-                        <?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>
+                        <?= $clr ? 'border-color: '.$clr['bd'].';' : '' ?>
                       " title="<?= h(($ev['summary'] ?? '') . ' — ' . $t['label_start'] . '–' . $t['label_end']) ?>">
-                        <a href="#" class="hide-pdf-link position-absolute top-0 end-0 px-1 py-0 text-decoration-none small" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" style="opacity:.6">hide</a>
-                        <div class="position-absolute top-0 start-0 px-1 py-0 small">
-                          <a href="#" class="uber-pill me-1 <?= !empty($t['pdf_uber_there']) ? 'active' : '' ?>" data-which="there" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>">U There</a>
-                          <a href="#" class="uber-pill <?= !empty($t['pdf_uber_back']) ? 'active' : '' ?>" data-which="back" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>">U Back</a>
+                        <div class="small text-muted">
+                          <?php
+                            // Shorten :00 times (e.g., 1:00pm -> 1pm)
+                            $sDT = (new DateTimeImmutable('@'.(int)$t['start_ts']))->setTimezone($tz);
+                            $endMin = isset($t['end_min']) ? (int)$t['end_min'] : (int)$t['start_min'];
+                            $eDT = (new DateTimeImmutable('@'.($dayStartTs + $endMin * 60)))->setTimezone($tz);
+                            $sLabel = ((int)$sDT->format('i') === 0) ? $sDT->format('ga') : $sDT->format('g:ia');
+                            $eLabel = ((int)$eDT->format('i') === 0) ? $eDT->format('ga') : $eDT->format('g:ia');
+                          ?>
+                          <?= h($sLabel) ?> – <?= h($eLabel) ?>
                         </div>
-                        <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
-                        <div class="fw-semibold small event-title"><?= h($ev['summary'] ?: '(No title)') ?></div>
-                        <?php if (!empty($ev['location'])): ?>
-                          <div class="small text-muted text-truncate"><?= h($ev['location']) ?></div>
+                        <div class="fw-semibold small event-title">
+                          <?= h($ev['summary'] ?: '(No title)') ?>
+                        </div>
+                        <?php
+                          $uberLine = [];
+                          if (!empty($t['pdf_uber_there'])) $uberLine[] = 'Uber There';
+                          if (!empty($t['pdf_uber_back']))  $uberLine[] = 'Uber Back';
+                          $uberLine = implode(' and ', $uberLine);
+                        ?>
+                        <?php if ($uberLine): ?>
+                          <div class="small text-muted"><?= h($uberLine) ?></div>
                         <?php endif; ?>
                       </div>
                     <?php endforeach; ?>
@@ -774,60 +792,55 @@ if ($printMode) {
           computeScreenHourHeight();
         }
 
-        // Hook up one-click Print on the main view
+        // Remove legacy Print handler (using PDF instead)
         document.addEventListener('DOMContentLoaded', () => {
-          const btn = document.getElementById('btnPrint');
-          if (btn) btn.addEventListener('click', () => window.print());
-          // PDF button now opens inline via target="_blank" and &inline=1; no JS interception needed
-          // Hide-from-PDF links
+          // Context menu for per-event actions (hide in PDF, Uber There/Back)
           const calId = <?= (int)$id ?>;
-          document.querySelectorAll('.hide-pdf-link').forEach(a => {
-            a.addEventListener('click', async (e) => {
-              e.preventDefault();
-              const startTs = +a.getAttribute('data-start');
-              const summary = a.getAttribute('data-summary') || '';
-              try {
-                const res = await fetch('api_pdf_hide.php', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                  body: new URLSearchParams({ action: 'hide', calendar_id: String(calId), start_ts: String(startTs), summary })
-                });
-                const data = await res.json().catch(() => ({}));
-                if (data && data.ok) {
-                  a.textContent = 'hidden';
-                  a.style.opacity = '1';
-                  a.style.color = '#198754';
-                  setTimeout(()=>{ a.textContent='hide'; a.style.opacity='.6'; a.style.color=''; }, 1200);
-                }
-              } catch (err) {
-                console.warn('hide pdf failed', err);
-              }
-            });
+          const menu = document.createElement('div');
+          menu.id = 'eventContextMenu';
+          menu.style.position = 'fixed';
+          menu.style.zIndex = '10000';
+          menu.style.background = '#fff';
+          menu.style.border = '1px solid rgba(0,0,0,0.2)';
+          menu.style.borderRadius = '.25rem';
+          menu.style.boxShadow = '0 2px 8px rgba(0,0,0,.15)';
+          menu.style.display = 'none';
+          menu.innerHTML = `
+            <div class="list-group list-group-flush small">
+              <button type="button" class="list-group-item list-group-item-action" data-act="hide">Hide in PDF</button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="there">Toggle Uber There</button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="back">Toggle Uber Back</button>
+            </div>`;
+          document.body.appendChild(menu);
+          function hideMenu(){ menu.style.display='none'; }
+          function showMenu(x,y){ menu.style.left=x+'px'; menu.style.top=y+'px'; menu.style.display='block'; }
+          document.addEventListener('click', hideMenu);
+          document.addEventListener('contextmenu', (e)=>{
+            // Only for event blocks
+            const block = (e.target.closest && e.target.closest('.event-block')) || null;
+            if (!block) { hideMenu(); return; }
+            e.preventDefault();
+            menu.dataset.start = block.getAttribute('data-start-ts') || '0';
+            menu.dataset.summary = block.getAttribute('data-summary') || '';
+            showMenu(e.clientX, e.clientY);
           });
-          // PDF Uber meta toggles
-          document.querySelectorAll('.uber-pill').forEach(p => {
-            p.addEventListener('click', async (e) => {
-              e.preventDefault();
-              const which = p.getAttribute('data-which') || 'there';
-              const startTs = +(p.getAttribute('data-start') || '0');
-              const summary = p.getAttribute('data-summary') || '';
-              const value = p.classList.contains('active') ? 0 : 1;
-              try {
-                const res = await fetch('api_pdf_uber.php', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                  body: new URLSearchParams({ calendar_id: String(calId), start_ts: String(startTs), summary, which, value: String(value) })
-                });
-                const data = await res.json().catch(()=>null);
-                if (data && data.ok) {
-                  if (which === 'there') {
-                    if (data.there) p.classList.add('active'); else p.classList.remove('active');
-                  } else {
-                    if (data.back) p.classList.add('active'); else p.classList.remove('active');
-                  }
-                }
-              } catch(err) { console.warn('uber toggle failed', err); }
-            });
+          menu.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-act]');
+            if (!btn) return;
+            const act = btn.getAttribute('data-act');
+            const startTs = menu.dataset.start || '0';
+            const summary = menu.dataset.summary || '';
+            hideMenu();
+            try {
+              if (act === 'hide') {
+                const res = await fetch('api_pdf_hide.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ action:'hide', calendar_id:String(calId), start_ts:String(startTs), summary }) });
+                await res.json().catch(()=>null);
+              } else if (act === 'there' || act === 'back') {
+                // Toggle: query current by asking server to flip value
+                const res = await fetch('api_pdf_uber.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ calendar_id:String(calId), start_ts:String(startTs), summary, which:act, value:'toggle' }) });
+                await res.json().catch(()=>null);
+              }
+            } catch(err) { console.warn('context action failed', err); }
           });
         });
 
