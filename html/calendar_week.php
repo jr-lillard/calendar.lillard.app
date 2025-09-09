@@ -292,6 +292,8 @@ if ($printMode) {
       .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       .event-block .hide-pdf-link { color: #6c757d; }
       .event-block:hover .hide-pdf-link { opacity: 1 !important; }
+      .uber-pill { border: 1px solid #6c757d; border-radius: 8px; padding: 0 4px; text-decoration: none; color: #6c757d; opacity: .6; background: #fff; }
+      .uber-pill.active { background: #198754; color: #fff; border-color: #198754; opacity: 1; }
       .hour-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(0,0,0,0.25); }
       .all-day-row { display: flex; flex-direction: column; gap: .25rem; margin-top: .15rem; padding-bottom: .6rem; }
       /* Extra spacing for all‑day blocks in preview/print */
@@ -542,6 +544,30 @@ if ($printMode) {
             <?php
             // Prepare day structures with all-day vs timed events and computed positions
             $startHour = 7; $endHour = 24;
+            // Load PDF meta (Uber There/Back) for this user/calendar in this visible week
+            try {
+              $pdo->exec("CREATE TABLE IF NOT EXISTS pdf_event_meta (
+                id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                calendar_id INT NOT NULL,
+                start_ts INT NOT NULL,
+                summary_hash CHAR(40) NOT NULL,
+                uber_there TINYINT(1) NOT NULL DEFAULT 0,
+                uber_back  TINYINT(1) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_meta (user_id, calendar_id, start_ts, summary_hash)
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            } catch (Throwable $e) { /* ignore */ }
+            $uberMap = [];
+            try {
+              $qs = $pdo->prepare('SELECT start_ts, summary_hash, uber_there, uber_back FROM pdf_event_meta WHERE user_id=? AND calendar_id=? AND start_ts BETWEEN ? AND ?');
+              $qs->execute([$uid, $id, $weekStart->getTimestamp(), $weekEnd->getTimestamp()]);
+              foreach ($qs->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $uberMap[(int)$r['start_ts'].'#'.(string)$r['summary_hash']] = [(int)$r['uber_there']===1, (int)$r['uber_back']===1];
+              }
+            } catch (Throwable $e) { /* ignore */ }
+
             foreach ($days as $ymd => $evs):
               $d = DateTimeImmutable::createFromFormat('Y-m-d', $ymd, $tz);
               $dayStartTs = $d->getTimestamp();
@@ -562,6 +588,8 @@ if ($printMode) {
                 }
                 $clipStart = max($startMin, $windowStartMin);
                 $clipEnd = min(max($endMin, $clipStart + 15), $windowEndMin);
+                $sumHash = sha1(strtolower(trim((string)($ev['summary'] ?? ''))));
+                $_meta = $uberMap[$st.'#'.$sumHash] ?? [false,false];
                 $timed[] = [
                   'ev' => $ev,
                   'top_min' => ($clipStart - $windowStartMin),
@@ -571,6 +599,8 @@ if ($printMode) {
                   'start_min' => $startMin,
                   'end_min' => $endMin,
                   'start_ts' => $st,
+                  'pdf_uber_there' => $_meta[0] ? 1 : 0,
+                  'pdf_uber_back'  => $_meta[1] ? 1 : 0,
                 ];
               }
               // Compute overlap columns for timed events
@@ -662,6 +692,10 @@ if ($printMode) {
                         <?= $clr ? 'background-color: '.$clr['bg'].'; border-color: '.$clr['bd'].';' : '' ?>
                       " title="<?= h(($ev['summary'] ?? '') . ' — ' . $t['label_start'] . '–' . $t['label_end']) ?>">
                         <a href="#" class="hide-pdf-link position-absolute top-0 end-0 px-1 py-0 text-decoration-none small" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" style="opacity:.6">hide</a>
+                        <div class="position-absolute top-0 start-0 px-1 py-0 small">
+                          <a href="#" class="uber-pill me-1 <?= !empty($t['pdf_uber_there']) ? 'active' : '' ?>" data-which="there" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>">U There</a>
+                          <a href="#" class="uber-pill <?= !empty($t['pdf_uber_back']) ? 'active' : '' ?>" data-which="back" data-start="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>">U Back</a>
+                        </div>
                         <div class="small text-muted"><?= h($t['label_start']) ?> – <?= h($t['label_end']) ?></div>
                         <div class="fw-semibold small event-title"><?= h($ev['summary'] ?: '(No title)') ?></div>
                         <?php if (!empty($ev['location'])): ?>
@@ -768,6 +802,31 @@ if ($printMode) {
               } catch (err) {
                 console.warn('hide pdf failed', err);
               }
+            });
+          });
+          // PDF Uber meta toggles
+          document.querySelectorAll('.uber-pill').forEach(p => {
+            p.addEventListener('click', async (e) => {
+              e.preventDefault();
+              const which = p.getAttribute('data-which') || 'there';
+              const startTs = +(p.getAttribute('data-start') || '0');
+              const summary = p.getAttribute('data-summary') || '';
+              const value = p.classList.contains('active') ? 0 : 1;
+              try {
+                const res = await fetch('api_pdf_uber.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: new URLSearchParams({ calendar_id: String(calId), start_ts: String(startTs), summary, which, value: String(value) })
+                });
+                const data = await res.json().catch(()=>null);
+                if (data && data.ok) {
+                  if (which === 'there') {
+                    if (data.there) p.classList.add('active'); else p.classList.remove('active');
+                  } else {
+                    if (data.back) p.classList.add('active'); else p.classList.remove('active');
+                  }
+                }
+              } catch(err) { console.warn('uber toggle failed', err); }
             });
           });
         });

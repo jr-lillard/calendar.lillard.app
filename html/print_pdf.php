@@ -318,6 +318,36 @@ if ($hidden) {
     $events = $filtered;
 }
 
+// Optional: per-user PDF event meta (Uber There/Back per instance)
+// Ensure table exists
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pdf_event_meta (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT NOT NULL,
+      calendar_id INT NOT NULL,
+      start_ts INT NOT NULL,
+      summary_hash CHAR(40) NOT NULL,
+      uber_there TINYINT(1) NOT NULL DEFAULT 0,
+      uber_back  TINYINT(1) NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_meta (user_id, calendar_id, start_ts, summary_hash)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+} catch (Throwable $e) { /* ignore */ }
+
+// Load meta for this week into a global map accessible during drawing
+$GLOBALS['__pdf_meta'] = [];
+try {
+    $q = $pdo->prepare('SELECT start_ts, summary_hash, uber_there, uber_back FROM pdf_event_meta WHERE user_id=? AND calendar_id=? AND start_ts BETWEEN ? AND ?');
+    $q->execute([$uid, $id, $weekStart->getTimestamp(), $weekEnd->getTimestamp()]);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $GLOBALS['__pdf_meta'][(int)$row['start_ts'].'#'.(string)$row['summary_hash']] = [
+            'there' => (int)$row['uber_there'] === 1,
+            'back'  => (int)$row['uber_back'] === 1,
+        ];
+    }
+} catch (Throwable $e) { /* ignore meta load */ }
+
 // Optional debug mode to quickly verify server-side values instead of a blank viewer
 if ($isDebug) {
     if (!headers_sent()) { header('Content-Type: text/plain; charset=UTF-8'); }
@@ -374,7 +404,7 @@ $dayW    = ($pageW - $axisW) / 7.0;
 $baseHeaderMin = 0.60;      // minimum header height
 $headerTitleTop = 0.10;     // where the weekday title starts
 $headerContentTopAbs = $originY + 0.32; // below the weekday title (kept constant)
-$headerBottomPad = 0.08;    // breathing room above 7AM grid
+$headerBottomPad = 0.02;    // minimal breathing room above 7AM grid (reduce extra space)
 $minRowH = 0.24;            // do not let hour rows get smaller than this
 
 // Compute the maximum header we can use while staying on one page
@@ -475,7 +505,7 @@ for ($d=0; $d<7; $d++) {
 
     // All-day events stacked (kept within header bounds)
     $headerContentTop = $originY + 0.32;               // below the weekday title
-    $headerContentBottom = $originY + $headerH - 0.08; // a bit more room before the 7AM gap
+    $headerContentBottom = $originY + $headerH; // use full header; avoid extra bottom padding
     $yAll = $headerContentTop;
     // Make all‑day text a bit smaller
     $pdf->SetFont('Helvetica', '', 8);
@@ -650,17 +680,35 @@ for ($d=0; $d<7; $d++) {
             $pdf->SetLineWidth(0.008);
             $pdf->SetFillColor(255,255,255);
             $pdf->Rect($bx, $by, max(0.02, $colW - 2*$innerPad), $bh, 'DF');
-            // Text: time range + title (slightly smaller font per request)
+            // Text: first line is the time range, second line is the title, optional third line for custom tags (e.g., Uber)
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
-            $sLbl = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
-            $eLbl = (new DateTimeImmutable('@'.$eTs))->setTimezone($tz)->format('g:ia');
+            $sLblFull = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
+            $eLblFull = (new DateTimeImmutable('@'.$eTs))->setTimezone($tz)->format('g:ia');
+            // Shorten on-the-hour labels (1:00pm -> 1pm)
+            $sLbl = preg_replace('/:00(AM|PM|am|pm)$/', '$1', $sLblFull);
+            $eLbl = preg_replace('/:00(AM|PM|am|pm)$/', '$1', $eLblFull);
+            $timeLine = $sLbl.' - '.$eLbl;
             $summary = pdf_sanitize_punct((string)($ev['summary'] ?? ''));
-            $label = $sLbl.' - '.$eLbl.'  '.$summary;
-            // Reduce font size further and tighten line height
+
+            // Optional third line: per-event meta such as Uber There/Back, loaded below from DB map
+            $pdfUber = '';
+            if (!isset($GLOBALS['__pdf_meta'])) { $GLOBALS['__pdf_meta'] = []; }
+            $metaKey = $sTs.'#'.sha1(strtolower(trim((string)($ev['summary'] ?? ''))));
+            if (isset($GLOBALS['__pdf_meta'][$metaKey])) {
+                $m = $GLOBALS['__pdf_meta'][$metaKey];
+                $there = !empty($m['there']);
+                $back  = !empty($m['back']);
+                if ($there && $back) { $pdfUber = 'Uber There and Back'; }
+                elseif ($there)     { $pdfUber = 'Uber There'; }
+                elseif ($back)      { $pdfUber = 'Uber Back'; }
+            }
+
+            // Smaller font and controlled line height; time on its own first line
             $pdf->SetFont('Helvetica', '', 6);
-            $pdf->SetXY($bx + 0.025, $by + 0.035 + ($startsOnHour ? 0.006 : 0));
-            // Use a clipped cell area; slightly tighter line height to match smaller font
-            $pdf->MultiCell($colW - 0.08, 0.11, pdf_txt($label), 0, 'L');
+            $pdf->SetXY($bx + 0.025, $by + 0.030 + ($startsOnHour ? 0.006 : 0));
+            $contentLines = pdf_txt($timeLine)."\n".pdf_txt($summary);
+            if ($pdfUber !== '') { $contentLines .= "\n".pdf_txt($pdfUber); }
+            $pdf->MultiCell($colW - 0.08, 0.11, $contentLines, 0, 'L');
             // Restore default grid/event line width for any subsequent shapes
             $pdf->SetLineWidth(0.02);
         }
