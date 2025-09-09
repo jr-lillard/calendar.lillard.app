@@ -431,7 +431,8 @@ for ($d=0; $d<7; $d++) {
     $dowName = $date->format('l');
     $mmdd = $date->format('n/j');
     $title = $dowName.' ('.$mmdd.')';
-    $pdf->SetFont('Helvetica', 'B', 11);
+    // Slightly smaller weekday title per request
+    $pdf->SetFont('Helvetica', 'B', 10);
     $pdf->SetXY($x, $originY + 0.10);
     $pdf->Cell($dayW, 0.18, pdf_txt($title), 0, 0, 'C');
 
@@ -439,7 +440,8 @@ for ($d=0; $d<7; $d++) {
     $headerContentTop = $originY + 0.32;               // below the weekday title
     $headerContentBottom = $originY + $headerH - 0.08; // a bit more room before the 7AM gap
     $yAll = $headerContentTop;
-    $pdf->SetFont('Helvetica', '', 9);
+    // Make all‑day text a bit smaller
+    $pdf->SetFont('Helvetica', '', 8);
     if (!empty($days[$date->format('Y-m-d')]['all'])) {
         $allList = $days[$date->format('Y-m-d')]['all'];
         $totalAll = count($allList);
@@ -456,7 +458,8 @@ for ($d=0; $d<7; $d++) {
             $bw   = max(0.10, $dayW - 0.16);                   // inner width
 
             // Estimate required height based on text width (single line) and allow up to two lines
-            $lineH = 0.12;
+            // Line height tuned to smaller font
+            $lineH = 0.11;
             $maxLines = 2;
             // For birthdays we force two centered lines: summary (1 line, ellipsized) + age on second line
             if ($isBirthday) {
@@ -495,7 +498,11 @@ for ($d=0; $d<7; $d++) {
             // Draw badge box (black border, solid white fill)
             $pdf->SetDrawColor(0,0,0);
             $pdf->SetFillColor(255,255,255);
+            // Match timed-event border thickness
+            $pdf->SetLineWidth(0.008);
             $pdf->Rect($bx, $yAll, $bw, $bh, 'DF');
+            // Restore default line width for subsequent grid lines
+            $pdf->SetLineWidth(0.02);
 
             // Text (centered). Birthdays: two lines (summary on first, age on second). Others: wrap up to 2 centered lines.
             $pdf->SetXY($bx + $padX, $yAll + $padY);
@@ -564,7 +571,8 @@ for ($d=0; $d<7; $d++) {
     for ($i=0; $i<$n; $i++) { $r = $find($i); $clusters[$r][] = $i; }
 
     $xLeft = $originX + $axisW + $d*$dayW;
-    $usableW = $dayW - 0.12; // padding 0.06 on both sides
+    // Reduce side padding so timed events use a bit more width (less empty space on the right)
+    $usableW = $dayW - 0.08; // padding 0.04 on both sides
     foreach ($clusters as $clIdxs) {
         // Order by start
         usort($clIdxs, fn($a,$b)=> $items[$a]['startMin'] <=> $items[$b]['startMin']);
@@ -583,7 +591,7 @@ for ($d=0; $d<7; $d++) {
         // Draw each in cluster
         foreach ($clIdxs as $ii) {
             $e = $items[$ii]; $ev = $e['ev']; $colIdx = $assign[$ii];
-            $bx = $xLeft + 0.06 + $colIdx * $colW;
+            $bx = $xLeft + 0.04 + $colIdx * $colW;
             $topFrac = $e['startMin'] / ($rows*60);
             $htFrac  = max(5/($rows*60), ($e['endMin'] - $e['startMin']) / ($rows*60));
             $by = $gridTop + $topFrac * $gridH;
@@ -602,7 +610,7 @@ for ($d=0; $d<7; $d++) {
             $pdf->SetDrawColor(0,0,0);
             $pdf->SetLineWidth(0.008);
             $pdf->SetFillColor(255,255,255);
-            $pdf->Rect($bx, $by, $colW - 0.06, $bh, 'DF');
+            $pdf->Rect($bx, $by, $colW - 0.04, $bh, 'DF');
             // Text: time range + title (slightly smaller font per request)
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
             $sLbl = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
@@ -611,9 +619,9 @@ for ($d=0; $d<7; $d++) {
             $label = $sLbl.' - '.$eLbl.'  '.$summary;
             // Reduce font size further and tighten line height
             $pdf->SetFont('Helvetica', '', 6);
-            $pdf->SetXY($bx + 0.03, $by + 0.035 + ($startsOnHour ? 0.006 : 0));
+            $pdf->SetXY($bx + 0.025, $by + 0.035 + ($startsOnHour ? 0.006 : 0));
             // Use a clipped cell area; slightly tighter line height to match smaller font
-            $pdf->MultiCell($colW - 0.12, 0.12, pdf_txt($label), 0, 'L');
+            $pdf->MultiCell($colW - 0.08, 0.11, pdf_txt($label), 0, 'L');
             // Restore default grid/event line width for any subsequent shapes
             $pdf->SetLineWidth(0.02);
         }
