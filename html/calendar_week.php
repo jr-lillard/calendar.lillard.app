@@ -814,17 +814,25 @@ if ($printMode) {
           document.body.appendChild(menu);
           function hideMenu(){ menu.style.display='none'; }
           function showMenu(x,y){ menu.style.left=x+'px'; menu.style.top=y+'px'; menu.style.display='block'; }
-          document.addEventListener('click', hideMenu);
-          document.addEventListener('contextmenu', (e)=>{
-            // Only for event blocks
+          // Open the menu on regular click/tap (better for mobile Safari)
+          document.addEventListener('click', (e)=>{
+            const isClickInsideMenu = !!(e.target.closest && e.target.closest('#eventContextMenu'));
+            if (isClickInsideMenu) return; // let the menu handler process
             const block = (e.target.closest && e.target.closest('.event-block')) || null;
             if (!block) { hideMenu(); return; }
-            e.preventDefault();
+            // Prepare data attributes from the clicked block
             menu.dataset.start = block.getAttribute('data-start-ts') || '0';
             menu.dataset.summary = block.getAttribute('data-summary') || '';
-            showMenu(e.clientX, e.clientY);
+            // Position the menu relative to the block (so it works without cursor coords)
+            const rect = block.getBoundingClientRect();
+            const top = rect.top + window.scrollY + 8;
+            const left = Math.max(8, Math.min(rect.left + rect.width/2 - 120 /*approx half menu width*/, window.scrollX + document.documentElement.clientWidth - 240 /*approx menu width*/));
+            showMenu(left, top);
           });
+
+          // Handle clicks within the menu (and prevent closing immediately)
           menu.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const btn = e.target.closest('button[data-act]');
             if (!btn) return;
             const act = btn.getAttribute('data-act');
