@@ -391,7 +391,7 @@ $pdf->Rect($originX, $originY, $pageW, $pageH);
 // Top header line (keep strong)
 $pdf->Line($originX, $originY, $originX + $pageW, $originY);
 // Axis right edge (lightened so labels remain prominent)
-$pdf->SetDrawColor(120,120,120); $pdf->SetLineWidth(0.01);
+$pdf->SetDrawColor(160,160,160); $pdf->SetLineWidth(0.008);
 $pdf->Line($originX + $axisW, $originY, $originX + $axisW, $originY + $pageH);
 // Day separators (internal grid: lighter/thinner)
 for ($i=0; $i<=7; $i++) {
@@ -406,7 +406,7 @@ $pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
 // Horizontal hour lines (including bottom boundary)
 // Draw lighter/thinner, and extend fully across the time axis so lines appear above labels
 $gridTop = $originY + $headerH + $topGap;
-$pdf->SetDrawColor(120,120,120); $pdf->SetLineWidth(0.01);
+$pdf->SetDrawColor(160,160,160); $pdf->SetLineWidth(0.008);
 for ($i=0; $i<=$rows; $i++) {
     $y = $gridTop + $i*$rowH;
     $pdf->Line($originX, $y, $originX + $pageW, $y);
@@ -589,7 +589,8 @@ for ($d=0; $d<7; $d++) {
             $by = $gridTop + $topFrac * $gridH;
             $bh = $htFrac * $gridH;
             // Nudge events that start/stop exactly on the hour so they do not sit on top of hour lines
-            $hourNudge = min(0.02, $rowH * 0.15); // ~0.02in or 15% of row height
+            // Increase the offset a touch for clearer separation
+            $hourNudge = min(0.060, $rowH * 0.35); // up to ~0.06in or ~35% of row height
             $startsOnHour = ($e['startMin'] % 60) === 0;
             $endsOnHour   = ($e['endMin'] % 60) === 0;
             if ($startsOnHour) { $by += $hourNudge; $bh -= $hourNudge; }
@@ -597,19 +598,24 @@ for ($d=0; $d<7; $d++) {
             // Ensure minimum visibility
             if ($bh < 0.10) { $bh = 0.10; }
             // Black & white: solid white fill with black border (ignore event colors)
+            // Use a thinner border for events so they don't appear heavy
             $pdf->SetDrawColor(0,0,0);
+            $pdf->SetLineWidth(0.008);
             $pdf->SetFillColor(255,255,255);
             $pdf->Rect($bx, $by, $colW - 0.06, $bh, 'DF');
-            // Text: time range + title
+            // Text: time range + title (slightly smaller font per request)
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
             $sLbl = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
             $eLbl = (new DateTimeImmutable('@'.$eTs))->setTimezone($tz)->format('g:ia');
             $summary = pdf_sanitize_punct((string)($ev['summary'] ?? ''));
             $label = $sLbl.' - '.$eLbl.'  '.$summary;
-            $pdf->SetFont('Helvetica', '', 9);
-            $pdf->SetXY($bx + 0.03, $by + 0.03);
-            // Use a clipped cell area
-            $pdf->MultiCell($colW - 0.12, 0.16, pdf_txt($label), 0, 'L');
+            // Reduce font size further and tighten line height
+            $pdf->SetFont('Helvetica', '', 6);
+            $pdf->SetXY($bx + 0.03, $by + 0.035 + ($startsOnHour ? 0.006 : 0));
+            // Use a clipped cell area; slightly tighter line height to match smaller font
+            $pdf->MultiCell($colW - 0.12, 0.12, pdf_txt($label), 0, 'L');
+            // Restore default grid/event line width for any subsequent shapes
+            $pdf->SetLineWidth(0.02);
         }
     }
 }
