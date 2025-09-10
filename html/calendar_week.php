@@ -805,11 +805,23 @@ if ($printMode) {
           menu.style.borderRadius = '.25rem';
           menu.style.boxShadow = '0 2px 8px rgba(0,0,0,.15)';
           menu.style.display = 'none';
+          // CSS-based checkmark indicator for selected options (no emoji/font dependency)
+          (function(){
+            const style = document.createElement('style');
+            style.textContent = '#eventContextMenu .list-group-item.on:before{content:"\\2713\\00A0"}'; // ✓ + nbsp
+            document.head.appendChild(style);
+          })();
           menu.innerHTML = `
             <div class="list-group list-group-flush small">
-              <button type="button" class="list-group-item list-group-item-action" data-act="hide">Hide in PDF</button>
-              <button type="button" class="list-group-item list-group-item-action" data-act="there">Uber There</button>
-              <button type="button" class="list-group-item list-group-item-action" data-act="back">Uber Back</button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="hide">
+                <span class="cm-label">Hide in PDF</span>
+              </button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="there">
+                <span class="cm-check" aria-hidden="true" style="display:none">✓ </span><span class="cm-label">Uber There</span>
+              </button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="back">
+                <span class="cm-check" aria-hidden="true" style="display:none">✓ </span><span class="cm-label">Uber Back</span>
+              </button>
             </div>`;
           document.body.appendChild(menu);
           function hideMenu(){ menu.style.display='none'; menu._target = null; }
@@ -832,13 +844,15 @@ if ($printMode) {
             const btnBack  = menu.querySelector('button[data-act="back"]');
             if (btnThere) {
               btnThere.classList.toggle('active', thereOn);
+              btnThere.classList.toggle('on', thereOn);
               btnThere.setAttribute('aria-pressed', thereOn ? 'true' : 'false');
-              btnThere.textContent = thereOn ? '✓ Uber There' : 'Uber There';
+              const chk = btnThere.querySelector('.cm-check'); if (chk) chk.style.display = thereOn ? 'inline' : 'none';
             }
             if (btnBack) {
               btnBack.classList.toggle('active', backOn);
+              btnBack.classList.toggle('on', backOn);
               btnBack.setAttribute('aria-pressed', backOn ? 'true' : 'false');
-              btnBack.textContent = backOn ? '✓ Uber Back' : 'Uber Back';
+              const chk = btnBack.querySelector('.cm-check'); if (chk) chk.style.display = backOn ? 'inline' : 'none';
             }
             // Position the menu relative to the block (so it works without cursor coords)
             const rect = block.getBoundingClientRect();
@@ -879,14 +893,16 @@ if ($printMode) {
                 if (act === 'there' && btnThere) {
                   const on = newOn;
                   btnThere.classList.toggle('active', on);
+                  btnThere.classList.toggle('on', on);
                   btnThere.setAttribute('aria-pressed', on ? 'true' : 'false');
-                  btnThere.textContent = on ? '✓ Uber There' : 'Uber There';
+                  const chk = btnThere.querySelector('.cm-check'); if (chk) chk.style.display = on ? 'inline' : 'none';
                 }
                 if (act === 'back' && btnBack) {
                   const on = newOn;
                   btnBack.classList.toggle('active', on);
+                  btnBack.classList.toggle('on', on);
                   btnBack.setAttribute('aria-pressed', on ? 'true' : 'false');
-                  btnBack.textContent = on ? '✓ Uber Back' : 'Uber Back';
+                  const chk = btnBack.querySelector('.cm-check'); if (chk) chk.style.display = on ? 'inline' : 'none';
                 }
               }
             } catch(err) { console.warn('context action failed', err); }
