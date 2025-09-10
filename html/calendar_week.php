@@ -698,12 +698,28 @@ if ($printMode) {
                       " title="<?= h(($ev['summary'] ?? '') . ' — ' . $t['label_start'] . '–' . $t['label_end']) ?>">
                         <div class="small text-muted">
                           <?php
-                            // Shorten :00 times (e.g., 1:00pm -> 1pm)
-                            $sDT = (new DateTimeImmutable('@'.(int)$t['start_ts']))->setTimezone($tz);
-                            $endMin = isset($t['end_min']) ? (int)$t['end_min'] : (int)$t['start_min'];
-                            $eDT = (new DateTimeImmutable('@'.($dayStartTs + $endMin * 60)))->setTimezone($tz);
-                            $sLabel = ((int)$sDT->format('i') === 0) ? $sDT->format('ga') : $sDT->format('g:ia');
-                            $eLabel = ((int)$eDT->format('i') === 0) ? $eDT->format('ga') : $eDT->format('g:ia');
+                            // First line: time only (short form).
+                            // Derive BOTH start and end labels from the exact block position/height used to render,
+                            // so the label always matches the visual, regardless of ICS quirks (DTEND vs DURATION) or clamping.
+                            $dayMidnight = $d->setTime(0, 0, 0);
+                            $labelWinStartMin = 7 * 60;   // 7:00 AM
+                            $labelWinEndMin   = 23 * 60;  // 11:00 PM (end of visible window)
+
+                            // Compute minutes-since-midnight for labels from the block's top/height
+                            $labelStartMin = $labelWinStartMin + (int)$t['top_min'];
+                            $labelEndMin   = min($labelWinEndMin, $labelWinStartMin + (int)$t['top_min'] + (int)$t['height_min']);
+                            // Guard: never let end label be before start label
+                            if ($labelEndMin < $labelStartMin) { $labelEndMin = $labelStartMin; }
+
+                            $dispStartTs = $dayMidnight->modify('+' . $labelStartMin . ' minutes')->getTimestamp();
+                            $dispEndTs   = $dayMidnight->modify('+' . $labelEndMin   . ' minutes')->getTimestamp();
+
+                            $dispStartDT = (new DateTimeImmutable('@'.$dispStartTs))->setTimezone($tz);
+                            $dispEndDT   = (new DateTimeImmutable('@'.$dispEndTs))->setTimezone($tz);
+
+                            // Shorten :00 minutes (e.g., 1pm instead of 1:00pm)
+                            $sLabel = ((int)$dispStartDT->format('i') === 0) ? $dispStartDT->format('ga') : $dispStartDT->format('g:ia');
+                            $eLabel = ((int)$dispEndDT->format('i') === 0) ? $dispEndDT->format('ga')   : $dispEndDT->format('g:ia');
                           ?>
                           <?= h($sLabel) ?> – <?= h($eLabel) ?>
                         </div>

@@ -63,10 +63,20 @@ function ics_parse_events(string $raw): array {
         $loc = $ev['LOCATION']['value'] ?? '';
         $startS = $ev['DTSTART']['value'] ?? '';
         $endS = $ev['DTEND']['value'] ?? '';
+        $durationS = $ev['DURATION']['value'] ?? '';
         $startTzid = (string)($ev['DTSTART']['params']['TZID'] ?? '');
         $endTzid = (string)($ev['DTEND']['params']['TZID'] ?? '');
         $start = ics_parse_dt_with_tz($startS, $startTzid);
         $end = ics_parse_dt_with_tz($endS, $endTzid);
+        // If DTEND is missing but DURATION is provided, compute the end timestamp
+        $durationSecs = null;
+        if ($durationS !== '') {
+            $durationSecs = ics_parse_duration_to_seconds($durationS);
+            if ($durationSecs !== null && ($end['ts'] ?? null) === null && ($start['ts'] ?? null) !== null) {
+                $endTs = (int)$start['ts'] + $durationSecs;
+                $end = ['ts' => $endTs, 'display' => (new DateTimeImmutable('@'.$endTs))->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i')];
+            }
+        }
         // Optional per‑event color (RFC 7986 COLOR). Accept hex only for safety.
         $color = null;
         if (!empty($ev['COLOR']['value'] ?? '')) {
@@ -105,6 +115,7 @@ function ics_parse_events(string $raw): array {
             'end_raw' => $endS,
             'start' => $start,
             'end' => $end,
+            'duration' => $durationSecs,
             'rrule' => $rrule,
             'exdates' => $exdates,
             'color' => $color,
@@ -174,6 +185,27 @@ function ics_parse_dt_with_tz(string $s, ?string $tzid): array {
     return ['ts' => null, 'display' => $s];
 }
 
+/**
+ * Parse an iCalendar DURATION string (e.g., "PT1H30M", "P2DT3H") into seconds.
+ * Supports weeks, days, hours, minutes, seconds. Returns null if invalid.
+ */
+function ics_parse_duration_to_seconds(string $s): ?int {
+    $s = trim($s);
+    if ($s === '') return null;
+    // RFC 5545 duration format: [+-]P[nW][nD][T[nH][nM][nS]]
+    if (!preg_match('/^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i', $s, $m)) {
+        return null;
+    }
+    $sign = ($m[1] ?? '') === '-' ? -1 : 1;
+    $w = isset($m[2]) && $m[2] !== '' ? (int)$m[2] : 0;
+    $d = isset($m[3]) && $m[3] !== '' ? (int)$m[3] : 0;
+    $h = isset($m[4]) && $m[4] !== '' ? (int)$m[4] : 0;
+    $min = isset($m[5]) && $m[5] !== '' ? (int)$m[5] : 0;
+    $sec = isset($m[6]) && $m[6] !== '' ? (int)$m[6] : 0;
+    $total = $w*7*86400 + $d*86400 + $h*3600 + $min*60 + $sec;
+    return $sign * $total;
+}
+
 function ics_sanitize_hex_color(string $s): ?string {
     $s = trim($s);
     // Allow forms like #RRGGBB, RRGGBB, #RGB, RGB
@@ -226,8 +258,13 @@ function ics_expand_events_in_range(string $raw, int $windowStart, int $windowEn
         $endTs = $e['end']['ts'] ?? null;
         $isAllDay = preg_match('/^\d{8}$/', (string)($e['start_raw'] ?? '')) === 1;
         $duration = 0;
-        if ($endTs !== null) { $duration = max(0, (int)$endTs - (int)$startTs); }
-        else { $duration = $isAllDay ? 86400 : 3600; }
+        if ($endTs !== null) {
+            $duration = max(0, (int)$endTs - (int)$startTs);
+        } else if (isset($e['duration']) && $e['duration'] !== null) {
+            $duration = max(0, (int)$e['duration']);
+        } else {
+            $duration = $isAllDay ? 86400 : 3600;
+        }
 
         $rr = $e['rrule'] ?? [];
         if (!$rr) {
