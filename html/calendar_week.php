@@ -689,7 +689,7 @@ if ($printMode) {
                         $topPerc = max(0.0, min(100.0, ($t['top_min'] / $totalMinutes) * 100.0));
                         $heightPerc = max(0.1, ($t['height_min'] / $totalMinutes) * 100.0);
                     ?>
-                      <div class="event-block" data-start-ts="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" style="
+                      <div class="event-block" data-start-ts="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" data-uber-there="<?= !empty($t['pdf_uber_there']) ? '1' : '0' ?>" data-uber-back="<?= !empty($t['pdf_uber_back']) ? '1' : '0' ?>" style="
                         top: <?= number_format($topPerc, 6, '.', '') ?>%;
                         height: <?= number_format($heightPerc, 6, '.', '') ?>%;
                         left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
@@ -808,11 +808,11 @@ if ($printMode) {
           menu.innerHTML = `
             <div class="list-group list-group-flush small">
               <button type="button" class="list-group-item list-group-item-action" data-act="hide">Hide in PDF</button>
-              <button type="button" class="list-group-item list-group-item-action" data-act="there">Toggle Uber There</button>
-              <button type="button" class="list-group-item list-group-item-action" data-act="back">Toggle Uber Back</button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="there">Uber There</button>
+              <button type="button" class="list-group-item list-group-item-action" data-act="back">Uber Back</button>
             </div>`;
           document.body.appendChild(menu);
-          function hideMenu(){ menu.style.display='none'; }
+          function hideMenu(){ menu.style.display='none'; menu._target = null; }
           function showMenu(x,y){ menu.style.left=x+'px'; menu.style.top=y+'px'; menu.style.display='block'; }
           // Open the menu on regular click/tap (better for mobile Safari)
           document.addEventListener('click', (e)=>{
@@ -823,6 +823,23 @@ if ($printMode) {
             // Prepare data attributes from the clicked block
             menu.dataset.start = block.getAttribute('data-start-ts') || '0';
             menu.dataset.summary = block.getAttribute('data-summary') || '';
+            // Keep a direct reference to the clicked block so we can update state without selectors
+            menu._target = block;
+            // Reflect current Uber state in the menu labels
+            const thereOn = (block.getAttribute('data-uber-there') === '1');
+            const backOn  = (block.getAttribute('data-uber-back')  === '1');
+            const btnThere = menu.querySelector('button[data-act="there"]');
+            const btnBack  = menu.querySelector('button[data-act="back"]');
+            if (btnThere) {
+              btnThere.classList.toggle('active', thereOn);
+              btnThere.setAttribute('aria-pressed', thereOn ? 'true' : 'false');
+              btnThere.textContent = thereOn ? '✓ Uber There' : 'Uber There';
+            }
+            if (btnBack) {
+              btnBack.classList.toggle('active', backOn);
+              btnBack.setAttribute('aria-pressed', backOn ? 'true' : 'false');
+              btnBack.textContent = backOn ? '✓ Uber Back' : 'Uber Back';
+            }
             // Position the menu relative to the block (so it works without cursor coords)
             const rect = block.getBoundingClientRect();
             const top = rect.top + window.scrollY + 8;
@@ -838,15 +855,39 @@ if ($printMode) {
             const act = btn.getAttribute('data-act');
             const startTs = menu.dataset.start || '0';
             const summary = menu.dataset.summary || '';
-            hideMenu();
             try {
               if (act === 'hide') {
                 const res = await fetch('api_pdf_hide.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ action:'hide', calendar_id:String(calId), start_ts:String(startTs), summary }) });
                 await res.json().catch(()=>null);
+                hideMenu();
               } else if (act === 'there' || act === 'back') {
-                // Toggle: query current by asking server to flip value
+                // Toggle on server
                 const res = await fetch('api_pdf_uber.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ calendar_id:String(calId), start_ts:String(startTs), summary, which:act, value:'toggle' }) });
                 await res.json().catch(()=>null);
+                // Update the clicked block's dataset immediately and reflect in the open menu
+                const target = menu._target && menu._target.closest ? menu._target : null;
+                const attr = act === 'there' ? 'data-uber-there' : 'data-uber-back';
+                let newOn = false;
+                if (target) {
+                  const cur = target.getAttribute(attr) === '1';
+                  newOn = !cur;
+                  target.setAttribute(attr, newOn ? '1' : '0');
+                }
+                // Update button text/state live without closing the menu
+                const btnThere = menu.querySelector('button[data-act="there"]');
+                const btnBack  = menu.querySelector('button[data-act="back"]');
+                if (act === 'there' && btnThere) {
+                  const on = newOn;
+                  btnThere.classList.toggle('active', on);
+                  btnThere.setAttribute('aria-pressed', on ? 'true' : 'false');
+                  btnThere.textContent = on ? '✓ Uber There' : 'Uber There';
+                }
+                if (act === 'back' && btnBack) {
+                  const on = newOn;
+                  btnBack.classList.toggle('active', on);
+                  btnBack.setAttribute('aria-pressed', on ? 'true' : 'false');
+                  btnBack.textContent = on ? '✓ Uber Back' : 'Uber Back';
+                }
               }
             } catch(err) { console.warn('context action failed', err); }
           });
