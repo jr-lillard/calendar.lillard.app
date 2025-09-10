@@ -813,14 +813,17 @@ if ($printMode) {
           })();
           menu.innerHTML = `
             <div class="list-group list-group-flush small">
-              <button type="button" class="list-group-item list-group-item-action" data-act="hide">
+              <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2" data-act="hide">
+                <span class="cm-flag" aria-hidden="true" style="width:1em; text-align:center;"></span>
                 <span class="cm-label">Hide in PDF</span>
               </button>
-              <button type="button" class="list-group-item list-group-item-action" data-act="there">
-                <span class="cm-check" aria-hidden="true" style="display:none">✓ </span><span class="cm-label">Uber There</span>
+              <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2" data-act="there">
+                <span class="cm-flag" aria-hidden="true" style="width:1em; text-align:center;"></span>
+                <span class="cm-label">Uber There</span>
               </button>
-              <button type="button" class="list-group-item list-group-item-action" data-act="back">
-                <span class="cm-check" aria-hidden="true" style="display:none">✓ </span><span class="cm-label">Uber Back</span>
+              <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2" data-act="back">
+                <span class="cm-flag" aria-hidden="true" style="width:1em; text-align:center;"></span>
+                <span class="cm-label">Uber Back</span>
               </button>
             </div>`;
           document.body.appendChild(menu);
@@ -844,15 +847,15 @@ if ($printMode) {
             const btnBack  = menu.querySelector('button[data-act="back"]');
             if (btnThere) {
               btnThere.classList.toggle('active', thereOn);
-              btnThere.classList.toggle('on', thereOn);
               btnThere.setAttribute('aria-pressed', thereOn ? 'true' : 'false');
-              const chk = btnThere.querySelector('.cm-check'); if (chk) chk.style.display = thereOn ? 'inline' : 'none';
+              const flag = btnThere.querySelector('.cm-flag');
+              if (flag) flag.textContent = thereOn ? '✓' : '';
             }
             if (btnBack) {
               btnBack.classList.toggle('active', backOn);
-              btnBack.classList.toggle('on', backOn);
               btnBack.setAttribute('aria-pressed', backOn ? 'true' : 'false');
-              const chk = btnBack.querySelector('.cm-check'); if (chk) chk.style.display = backOn ? 'inline' : 'none';
+              const flag = btnBack.querySelector('.cm-flag');
+              if (flag) flag.textContent = backOn ? '✓' : '';
             }
             // Position the menu relative to the block (so it works without cursor coords)
             const rect = block.getBoundingClientRect();
@@ -893,16 +896,16 @@ if ($printMode) {
                 if (act === 'there' && btnThere) {
                   const on = newOn;
                   btnThere.classList.toggle('active', on);
-                  btnThere.classList.toggle('on', on);
                   btnThere.setAttribute('aria-pressed', on ? 'true' : 'false');
-                  const chk = btnThere.querySelector('.cm-check'); if (chk) chk.style.display = on ? 'inline' : 'none';
+                  const flag = btnThere.querySelector('.cm-flag');
+                  if (flag) flag.textContent = on ? '✓' : '';
                 }
                 if (act === 'back' && btnBack) {
                   const on = newOn;
                   btnBack.classList.toggle('active', on);
-                  btnBack.classList.toggle('on', on);
                   btnBack.setAttribute('aria-pressed', on ? 'true' : 'false');
-                  const chk = btnBack.querySelector('.cm-check'); if (chk) chk.style.display = on ? 'inline' : 'none';
+                  const flag = btnBack.querySelector('.cm-flag');
+                  if (flag) flag.textContent = on ? '✓' : '';
                 }
               }
             } catch(err) { console.warn('context action failed', err); }
