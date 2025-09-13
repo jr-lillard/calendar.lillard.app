@@ -892,37 +892,40 @@ if ($printMode) {
               if (act === 'hide') {
                 const res = await fetch('api_pdf_hide.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ action:'hide', calendar_id:String(calId), start_ts:String(startTs), summary }) });
                 await res.json().catch(()=>null);
+                // Close after action to match expected UX
                 hideMenu();
               } else if (act === 'there' || act === 'back') {
-                // Toggle on server
-                const res = await fetch('api_pdf_uber.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({ calendar_id:String(calId), start_ts:String(startTs), summary, which:act, value:'toggle' }) });
-                await res.json().catch(()=>null);
-                // Update the clicked block's dataset immediately and reflect in the open menu
+                // Determine new state locally, send explicit value to server, update UI, then close
                 const target = menu._target && menu._target.closest ? menu._target : null;
                 const attr = act === 'there' ? 'data-uber-there' : 'data-uber-back';
-                let newOn = false;
-                if (target) {
-                  const cur = target.getAttribute(attr) === '1';
-                  newOn = !cur;
-                  target.setAttribute(attr, newOn ? '1' : '0');
-                }
-                // Update button text/state live without closing the menu
+                const curOn = target ? (target.getAttribute(attr) === '1') : false;
+                const newOn = !curOn;
+                // Persist explicit value to server so PDF sees it
+                await fetch('api_pdf_uber.php', {
+                  method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                  body:new URLSearchParams({ calendar_id:String(calId), start_ts:String(startTs), summary, which:act, value: newOn ? '1' : '0' })
+                }).then(r=>r.json()).catch(()=>null);
+                // Update the clicked block dataset so reopening the menu reflects state
+                if (target) target.setAttribute(attr, newOn ? '1' : '0');
+                // Optionally reflect in the currently open menu (not strictly necessary since we close it)
                 const btnThere = menu.querySelector('button[data-act="there"]');
                 const btnBack  = menu.querySelector('button[data-act="back"]');
-                if (act === 'there' && btnThere) {
-                  const on = newOn;
+                if (btnThere) {
+                  const on = (act === 'there') ? newOn : (target && target.getAttribute('data-uber-there') === '1');
                   btnThere.classList.toggle('active', on);
                   btnThere.setAttribute('aria-pressed', on ? 'true' : 'false');
                   const flag = btnThere.querySelector('.cm-flag');
                   if (flag) flag.textContent = on ? '✓' : '';
                 }
-                if (act === 'back' && btnBack) {
-                  const on = newOn;
+                if (btnBack) {
+                  const on = (act === 'back') ? newOn : (target && target.getAttribute('data-uber-back') === '1');
                   btnBack.classList.toggle('active', on);
                   btnBack.setAttribute('aria-pressed', on ? 'true' : 'false');
                   const flag = btnBack.querySelector('.cm-flag');
                   if (flag) flag.textContent = on ? '✓' : '';
                 }
+                // Close the menu after selection for a cleaner mobile UX
+                hideMenu();
               }
             } catch(err) { console.warn('context action failed', err); }
           });
