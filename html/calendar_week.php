@@ -901,12 +901,33 @@ if ($printMode) {
                 const curOn = target ? (target.getAttribute(attr) === '1') : false;
                 const newOn = !curOn;
                 // Persist explicit value to server so PDF sees it
-                await fetch('api_pdf_uber.php', {
+                const resp = await fetch('api_pdf_uber.php', {
                   method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
                   body:new URLSearchParams({ calendar_id:String(calId), start_ts:String(startTs), summary, which:act, value: newOn ? '1' : '0' })
-                }).then(r=>r.json()).catch(()=>null);
+                });
+                let j = null; try { j = await resp.json(); } catch(e) {}
                 // Update the clicked block dataset so reopening the menu reflects state
                 if (target) target.setAttribute(attr, newOn ? '1' : '0');
+                // Also update the visible third line in the event block to reflect Uber tags immediately
+                if (target) {
+                  const thereOnNow = (target.getAttribute('data-uber-there') === '1');
+                  const backOnNow  = (target.getAttribute('data-uber-back') === '1');
+                  let uberText = '';
+                  if (thereOnNow && backOnNow) uberText = 'Uber There and Back';
+                  else if (thereOnNow) uberText = 'Uber There';
+                  else if (backOnNow) uberText = 'Uber Back';
+                  let line = target.querySelector('.ev-uber-line');
+                  if (uberText) {
+                    if (!line) {
+                      line = document.createElement('div');
+                      line.className = 'small text-muted ev-uber-line';
+                      target.appendChild(line);
+                    }
+                    line.textContent = uberText;
+                  } else if (line) {
+                    line.remove();
+                  }
+                }
                 // Optionally reflect in the currently open menu (not strictly necessary since we close it)
                 const btnThere = menu.querySelector('button[data-act="there"]');
                 const btnBack  = menu.querySelector('button[data-act="back"]');
