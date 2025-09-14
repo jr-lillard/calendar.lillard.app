@@ -38,41 +38,43 @@ if (isset($_GET['ping'])) {
 if (isset($_GET['test'])) {
     $tlog = __DIR__.'/../sessions/pdf_test_steps.log';
     $log = function(string $m) use ($tlog) { @file_put_contents($tlog, '['.date('c')."] ".$m."\n", FILE_APPEND); };
+    $last = 'start';
     try {
-        $log('start test');
+        $log('start test'); $last = 'after start';
         require __DIR__.'/lib/fpdf.php';
-        $log('fpdf loaded');
+        $log('fpdf loaded'); $last = 'after fpdf load';
         if (function_exists('ob_get_level')) { while (ob_get_level() > 0) { @ob_end_clean(); } }
         // Use base FPDF for maximum compatibility
         $pdf = new FPDF('L','in','Letter');
-        $log('fpdf constructed');
+        $log('fpdf constructed'); $last = 'after construct';
         $pdf->SetMargins(0.40, 0.40, 0.40);
-        $log('margins set');
+        $log('margins set'); $last = 'after margins';
         $pdf->AddPage();
-        $log('page added');
+        $log('page added'); $last = 'after AddPage';
         $pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
-        $log('stroke setup');
+        $log('stroke setup'); $last = 'after stroke setup';
         $pageW = $pdf->GetPageWidth() - 0.8; // inside margins
         $pageH = $pdf->GetPageHeight() - 0.8;
         $pdf->Rect(0.40, 0.40, max(0.01,$pageW), max(0.01,$pageH));
-        $log('rect drawn');
+        $log('rect drawn'); $last = 'after rect';
         $pdf->SetFont('Helvetica','B',16);
-        $log('font set 1');
+        $log('font set 1'); $last = 'after font1';
         $pdf->Text(0.60, 0.80, 'Family Week View — PDF Self-Test');
-        $log('text 1');
+        $log('text 1'); $last = 'after text1';
         $pdf->SetFont('Helvetica','',11);
-        $log('font set 2');
+        $log('font set 2'); $last = 'after font2';
         $pdf->Text(0.60, 1.10, 'This is a minimal PDF generated via FPDF.');
         $pdf->Text(0.60, 1.30, 'If you can see this, FPDF works and headers are correct.');
-        $log('text 2');
+        $log('text 2'); $last = 'after text2';
         // Default inline for self-test to simplify verification
         $mode = (isset($_GET['download']) && $_GET['download'] !== '0') ? 'D' : 'I';
-        $log('about to output mode='.$mode);
+        $log('about to output mode='.$mode); $last = 'before output';
         $pdf->Output($mode, 'PDF_Self_Test.pdf');
-        $log('output done');
+        $log('output done'); $last = 'after output';
     } catch (Throwable $e) {
-        $log('exception: '.$e->getMessage());
-        throw $e;
+        $log('exception at '.$last.': '.$e->getMessage());
+        // Re-throw with location context so it shows on screen
+        throw new Exception('('.$last.') '.$e->getMessage(), 0, $e);
     }
     exit;
 }
