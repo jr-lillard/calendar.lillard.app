@@ -57,10 +57,10 @@ function ics_parse_events(string $raw): array {
     // Normalize map
     $norm = [];
     foreach ($events as $ev) {
-        $summary = $ev['SUMMARY']['value'] ?? '';
+        $summary = ics_text_unescape($ev['SUMMARY']['value'] ?? '');
         $uid     = $ev['UID']['value'] ?? '';
-        $desc = $ev['DESCRIPTION']['value'] ?? '';
-        $loc = $ev['LOCATION']['value'] ?? '';
+        $desc = ics_text_unescape($ev['DESCRIPTION']['value'] ?? '');
+        $loc = ics_text_unescape($ev['LOCATION']['value'] ?? '');
         $startS = $ev['DTSTART']['value'] ?? '';
         $endS = $ev['DTEND']['value'] ?? '';
         $durationS = $ev['DURATION']['value'] ?? '';
@@ -124,6 +124,19 @@ function ics_parse_events(string $raw): array {
     // Sort by start
     usort($norm, function($a,$b){ return ($a['start']['ts'] ?? PHP_INT_MAX) <=> ($b['start']['ts'] ?? PHP_INT_MAX); });
     return $norm;
+}
+
+/**
+ * Unescape iCalendar TEXT per RFC 5545: \n or \N => newline, \, => comma, \; => semicolon, \\ => backslash.
+ * Leaves other sequences intact.
+ */
+function ics_text_unescape(string $s): string {
+    if ($s === '') return '';
+    // Replace escaped sequences in a safe order (backslash last to avoid double-processing)
+    $s = str_replace(["\\n", "\\N"], "\n", $s);
+    $s = str_replace(["\\,", "\\;"], [",", ";"], $s);
+    $s = str_replace("\\\\", "\\", $s);
+    return $s;
 }
 
 function ics_parse_dt(string $s): array {
