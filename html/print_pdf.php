@@ -21,6 +21,12 @@ set_exception_handler(function(Throwable $e): void {
     exit;
 });
 
+// Proactively invalidate OPcache for this script and FPDF to avoid running stale bytecode
+if (function_exists('opcache_invalidate')) {
+    @opcache_invalidate(__FILE__, true);
+    @opcache_invalidate(__DIR__ . '/lib/fpdf.php', true);
+}
+
 // Minimal early debug/ping path (before sessions/DB) to diagnose blank output
 if (isset($_GET['ping'])) {
     if (!headers_sent()) {
@@ -37,20 +43,15 @@ if (isset($_GET['ping'])) {
 // Useful to isolate FPDF/runtime issues from calendar/data issues.
 if (isset($_GET['test'])) {
     require __DIR__.'/lib/fpdf.php';
+    if (function_exists('opcache_invalidate')) {
+        @opcache_invalidate(__FILE__, true);
+        @opcache_invalidate(__DIR__ . '/lib/fpdf.php', true);
+    }
     if (function_exists('ob_get_level')) { while (ob_get_level() > 0) { @ob_end_clean(); } }
+    // Bare-minimum PDF: one blank page
     $pdf = new FPDF('L','in','Letter');
     $pdf->SetMargins(0.40, 0.40, 0.40);
     $pdf->AddPage();
-    $pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
-    $pageW = $pdf->GetPageWidth() - 0.8; // inside margins
-    $pageH = $pdf->GetPageHeight() - 0.8;
-    $pdf->Rect(0.40, 0.40, $pageW, $pageH);
-    $pdf->SetFont('Helvetica','B',16);
-    $pdf->Text(0.60, 0.80, 'Family Week View — PDF Self-Test');
-    $pdf->SetFont('Helvetica','',11);
-    $pdf->Text(0.60, 1.10, 'This is a minimal PDF generated via FPDF.');
-    $pdf->Text(0.60, 1.30, 'If you can see this, FPDF works and headers are correct.');
-    // Default inline for self-test to simplify verification
     $mode = (isset($_GET['download']) && $_GET['download'] !== '0') ? 'D' : 'I';
     $pdf->Output($mode, 'PDF_Self_Test.pdf');
     exit;
