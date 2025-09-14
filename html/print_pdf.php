@@ -38,7 +38,17 @@ if (isset($_GET['ping'])) {
 if (isset($_GET['test'])) {
     require __DIR__.'/lib/fpdf.php';
     if (function_exists('ob_get_level')) { while (ob_get_level() > 0) { @ob_end_clean(); } }
-    $pdf = new FPDF('L','in','Letter');
+    // Small FPDF subclass to embed ViewerPreferences so browsers default to 100% scaling
+    if (!class_exists('PDF_NoScale')) {
+        class PDF_NoScale extends FPDF {
+            // Add /ViewerPreferences << /PrintScaling /None >> to stop auto-fit shrinking
+            function _putcatalog() {
+                parent::_putcatalog();
+                $this->_out('/ViewerPreferences <</PrintScaling /None>>');
+            }
+        }
+    }
+    $pdf = new PDF_NoScale('L','in','Letter');
     $pdf->SetMargins(0.40, 0.40, 0.40);
     $pdf->AddPage();
     $pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
@@ -75,6 +85,15 @@ if (!isset($_SESSION['user_id']) && !$isDebug) { header('Location: index.php'); 
 
 require __DIR__.'/lib_ics.php';
 require __DIR__.'/lib/fpdf.php';
+// FPDF subclass used for real calendar rendering as well (embed PrintScaling=None)
+if (!class_exists('PDF_NoScale')) {
+    class PDF_NoScale extends FPDF {
+        function _putcatalog() {
+            parent::_putcatalog();
+            $this->_out('/ViewerPreferences <</PrintScaling /None>>');
+        }
+    }
+}
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
@@ -382,7 +401,7 @@ foreach ($days as &$dref) {
 unset($dref);
 
 // ----- PDF drawing with FPDF -----
-$pdf = new FPDF('L', 'in', 'Letter');
+$pdf = new PDF_NoScale('L', 'in', 'Letter');
 // Store margins locally instead of reading FPDF's protected properties later
 $margin = 0.40; // inches on all sides
 $pdf->SetMargins($margin, $margin, $margin);
