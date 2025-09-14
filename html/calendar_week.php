@@ -733,7 +733,7 @@ if ($printMode) {
                           $uberLine = implode(' and ', $uberLine);
                         ?>
                         <?php if ($uberLine): ?>
-                          <div class="small text-muted"><?= h($uberLine) ?></div>
+                          <div class="small text-muted ev-uber-line"><?= h($uberLine) ?></div>
                         <?php endif; ?>
                       </div>
                     <?php endforeach; ?>
