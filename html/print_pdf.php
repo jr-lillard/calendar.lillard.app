@@ -36,24 +36,44 @@ if (isset($_GET['ping'])) {
 // Minimal PDF self-test that bypasses DB/ICS and just draws a basic page.
 // Useful to isolate FPDF/runtime issues from calendar/data issues.
 if (isset($_GET['test'])) {
-    require __DIR__.'/lib/fpdf.php';
-    if (function_exists('ob_get_level')) { while (ob_get_level() > 0) { @ob_end_clean(); } }
-    // Use base FPDF for maximum compatibility
-    $pdf = new FPDF('L','in','Letter');
-    $pdf->SetMargins(0.40, 0.40, 0.40);
-    $pdf->AddPage();
-    $pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
-    $pageW = $pdf->GetPageWidth() - 0.8; // inside margins
-    $pageH = $pdf->GetPageHeight() - 0.8;
-    $pdf->Rect(0.40, 0.40, $pageW, $pageH);
-    $pdf->SetFont('Helvetica','B',16);
-    $pdf->Text(0.60, 0.80, 'Family Week View — PDF Self-Test');
-    $pdf->SetFont('Helvetica','',11);
-    $pdf->Text(0.60, 1.10, 'This is a minimal PDF generated via FPDF.');
-    $pdf->Text(0.60, 1.30, 'If you can see this, FPDF works and headers are correct.');
-    // Default inline for self-test to simplify verification
-    $mode = (isset($_GET['download']) && $_GET['download'] !== '0') ? 'D' : 'I';
-    $pdf->Output($mode, 'PDF_Self_Test.pdf');
+    $tlog = __DIR__.'/../sessions/pdf_test_steps.log';
+    $log = function(string $m) use ($tlog) { @file_put_contents($tlog, '['.date('c')."] ".$m."\n", FILE_APPEND); };
+    try {
+        $log('start test');
+        require __DIR__.'/lib/fpdf.php';
+        $log('fpdf loaded');
+        if (function_exists('ob_get_level')) { while (ob_get_level() > 0) { @ob_end_clean(); } }
+        // Use base FPDF for maximum compatibility
+        $pdf = new FPDF('L','in','Letter');
+        $log('fpdf constructed');
+        $pdf->SetMargins(0.40, 0.40, 0.40);
+        $log('margins set');
+        $pdf->AddPage();
+        $log('page added');
+        $pdf->SetDrawColor(0,0,0); $pdf->SetLineWidth(0.02);
+        $log('stroke setup');
+        $pageW = $pdf->GetPageWidth() - 0.8; // inside margins
+        $pageH = $pdf->GetPageHeight() - 0.8;
+        $pdf->Rect(0.40, 0.40, max(0.01,$pageW), max(0.01,$pageH));
+        $log('rect drawn');
+        $pdf->SetFont('Helvetica','B',16);
+        $log('font set 1');
+        $pdf->Text(0.60, 0.80, 'Family Week View — PDF Self-Test');
+        $log('text 1');
+        $pdf->SetFont('Helvetica','',11);
+        $log('font set 2');
+        $pdf->Text(0.60, 1.10, 'This is a minimal PDF generated via FPDF.');
+        $pdf->Text(0.60, 1.30, 'If you can see this, FPDF works and headers are correct.');
+        $log('text 2');
+        // Default inline for self-test to simplify verification
+        $mode = (isset($_GET['download']) && $_GET['download'] !== '0') ? 'D' : 'I';
+        $log('about to output mode='.$mode);
+        $pdf->Output($mode, 'PDF_Self_Test.pdf');
+        $log('output done');
+    } catch (Throwable $e) {
+        $log('exception: '.$e->getMessage());
+        throw $e;
+    }
     exit;
 }
 
