@@ -42,7 +42,7 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
       .brand { font-weight: 600; }
     </style>
   </head>
-  <body class="bg-light">
+  <body class="bg-white">
     <main class="container d-flex justify-content-center align-items-center min-vh-100">
       <div class="login-card">
         <?php if (!$dbReady): ?>
@@ -51,7 +51,7 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
           </div>
         <?php endif; ?>
 
-        <div class="card shadow-sm border-0">
+        <div class="card bg-white shadow-sm border-0">
           <div class="card-body p-4">
             <form method="post" action="magic_login_request.php" class="mb-0">
               <div class="mb-3">
