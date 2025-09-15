@@ -43,13 +43,15 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
     </style>
   </head>
   <body class="bg-light">
-    <div class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
-      <div class="login-card">
-        <div class="text-center mb-4">
-          <div class="brand h3 mb-1">Calendar</div>
-          <div class="text-muted">Sign in to continue</div>
-        </div>
+    <!-- Calendar navbar at the top -->
+    <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
+      <div class="container">
+        <a class="navbar-brand fw-semibold" href="dashboard.php">Calendar</a>
+      </div>
+    </nav>
 
+    <main class="container py-5 d-flex justify-content-center">
+      <div class="login-card">
         <?php if (!$dbReady): ?>
           <div class="alert alert-warning" role="alert">
             Missing or invalid configuration. Add <code>html/config.php</code> based on <code>config.php.example</code>.
@@ -58,21 +60,19 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
 
         <div class="card shadow-sm">
           <div class="card-body p-4">
-            <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <div class="fw-semibold">Sign in with a magic link</div>
-                <div class="text-muted small">Passwords are disabled. Magic links are valid for 15 minutes and can be opened on multiple devices.</div>
+            <h1 class="h5 mb-3">Sign in</h1>
+            <form method="post" action="magic_login_request.php" class="mb-0">
+              <div class="mb-3">
+                <label for="identifier" class="form-label">Email address</label>
+                <input type="email" class="form-control" id="identifier" name="identifier" placeholder="you@example.com" required>
               </div>
-              <a class="btn btn-primary" href="magic_login_request.php">Get magic link</a>
-            </div>
+              <button class="btn btn-primary w-100" type="submit">Continue</button>
+            </form>
+            <div class="text-muted small mt-2">Magic links are the only way to sign in. Links are valid for 15 minutes and can be opened on multiple devices.</div>
           </div>
         </div>
-
-        <p class="text-center text-muted mt-3 mb-0">
-          Don’t have an account? <a href="#">Create one</a>
-        </p>
       </div>
-    </div>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script></script>
