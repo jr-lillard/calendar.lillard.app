@@ -53,6 +53,17 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
       /* Remove any default borders/radius that might suggest a card */
       .flat-panel,
       .form-control { border-radius: 0 !important; }
+
+      /* Bigger chevron that fills the button area */
+      .login-chevron-btn {
+        font-size: 2rem;       /* larger glyph */
+        line-height: 1;        /* tight line height so the glyph is centered */
+        padding: 0 .5rem;      /* minimal horizontal padding */
+        display: inline-flex;  /* center the glyph inside the button */
+        align-items: center;
+        justify-content: center;
+        min-width: 2.5rem;     /* give the chevron visual weight */
+      }
     </style>
   </head>
   <body class="bg-white">
@@ -68,9 +79,7 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
           <form method="post" action="magic_login_request.php" class="mb-0">
             <div class="input-group input-group-lg">
               <input type="email" class="form-control" id="identifier" name="identifier" placeholder="Email address" required>
-              <button class="btn btn-primary" type="submit" aria-label="Login" title="Login" style="font-size:1.25rem; line-height:1; padding-inline:0.9rem">
-                &rsaquo;
-              </button>
+              <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Login" title="Login">&rsaquo;</button>
             </div>
           </form>
         </div>
