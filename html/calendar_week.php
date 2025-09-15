@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 session_start();
+require_once __DIR__ . '/lib_auth.php';
+if (!isset($_SESSION['user_id'])) { auth_try_device_login(); }
 if (!isset($_SESSION['user_id'])) { header('Location: index.php'); exit; }
 require __DIR__.'/lib_ics.php';
 

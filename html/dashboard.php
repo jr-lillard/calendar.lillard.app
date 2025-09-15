@@ -1,10 +1,9 @@
 <?php
 declare(strict_types=1);
 session_start();
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
-}
+require_once __DIR__ . '/lib_auth.php';
+if (!isset($_SESSION['user_id'])) { auth_try_device_login(); }
+if (!isset($_SESSION['user_id'])) { header('Location: index.php'); exit; }
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 $name = $_SESSION['user_username'] ?? $_SESSION['user_email'] ?? 'User';
 ?>

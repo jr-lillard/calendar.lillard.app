@@ -21,4 +21,16 @@ return [
     // 'holiday_ics' => 'https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics',
     'holiday_ics' => null,
     'holiday_name' => 'Holidays',
+    // Magic link + device auth settings
+    'magic' => [
+        // Base URL used to build magic links (no trailing slash)
+        // e.g., 'https://calendar.lillard.dev'
+        'base_url' => '',
+        // Link validity window in minutes and how many times it can be used
+        'token_ttl_minutes' => 15, // hard-capped to 15 in code
+        'max_uses' => 10,
+        // Long-lived device cookie settings
+        'device_cookie_name' => 'cal_dev',
+        'device_cookie_days' => 1825, // 5 years
+    ],
 ];
