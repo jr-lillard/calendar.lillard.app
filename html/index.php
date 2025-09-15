@@ -54,17 +54,25 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
       .flat-panel,
       .form-control { border-radius: 0 !important; }
 
-      /* Bigger chevron that fills the button area */
+      /* Bigger chevron button that clearly dominates the control */
       .login-chevron-btn {
-        /* Make the chevron visually dominate the button area */
-        font-size: 2.75rem;    /* larger glyph */
-        line-height: .9;       /* slightly tighter to center better */
-        padding: 0 .25rem;     /* minimal horizontal padding */
-        display: inline-flex;  /* center the glyph inside the button */
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 3.25rem;    /* wider button for a bolder chevron */
+        padding: 0 !important;
+        min-width: 3.5rem !important; /* wide button */
+        height: 3rem !important;      /* tall button */
+        line-height: 1 !important;
+        border: 0; box-shadow: none !important;
       }
+      .login-chevron-btn svg {
+        width: 2.2rem;  /* enlarge the chevron itself */
+        height: 2.2rem;
+        display: block;
+      }
+      /* Ensure input height matches button height for visual balance */
+      .input-group-lg > .form-control,
+      .input-group-lg > .btn { height: 3rem; }
     </style>
   </head>
   <body class="bg-white">
@@ -80,7 +88,11 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
           <form method="post" action="magic_login_request.php" class="mb-0">
             <div class="input-group input-group-lg">
               <input type="email" class="form-control" id="identifier" name="identifier" placeholder="Email address" required>
-              <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Login" title="Login">&rsaquo;</button>
+              <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Login" title="Login">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                  <path d="M6.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 1 1-.708-.708L12.293 8 6.646 2.354a.5.5 0 0 1 0-.708z"/>
+                </svg>
+              </button>
             </div>
           </form>
         </div>
