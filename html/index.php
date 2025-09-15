@@ -37,6 +37,8 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login · Calendar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons for chevron button -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
       /* Layout */
       .login-wrap { max-width: 420px; width: 100%; }
@@ -54,25 +56,17 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
       .flat-panel,
       .form-control { border-radius: 0 !important; }
 
-      /* Bigger chevron button that clearly dominates the control */
+      /* Chevron button: default sizing (Bootstrap Icons at 1em) */
       .login-chevron-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0 !important;
-        min-width: 3.5rem !important; /* wide button */
-        height: 3rem !important;      /* tall button */
-        line-height: 1 !important;
+        padding: .375rem .5rem; /* default-ish padding */
         border: 0; box-shadow: none !important;
+        background: transparent; /* flat look */
+        color: #0d6efd;          /* primary icon color */
       }
-      .login-chevron-btn svg {
-        width: 2.2rem;  /* enlarge the chevron itself */
-        height: 2.2rem;
-        display: block;
-      }
-      /* Ensure input height matches button height for visual balance */
-      .input-group-lg > .form-control,
-      .input-group-lg > .btn { height: 3rem; }
+      .login-chevron-btn:focus { outline: none !important; }
     </style>
   </head>
   <body class="bg-white">
@@ -86,12 +80,10 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
 
         <div class="flat-panel p-4">
           <form method="post" action="magic_login_request.php" class="mb-0">
-            <div class="input-group input-group-lg">
+            <div class="input-group">
               <input type="email" class="form-control" id="identifier" name="identifier" placeholder="Email address" required>
-              <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Login" title="Login">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
-                  <path d="M6.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 1 1-.708-.708L12.293 8 6.646 2.354a.5.5 0 0 1 0-.708z"/>
-                </svg>
+              <button class="login-chevron-btn" type="submit" aria-label="Login" title="Login">
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
           </form>
