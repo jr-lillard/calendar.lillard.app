@@ -66,10 +66,12 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
 
         <div class="flat-panel p-4">
           <form method="post" action="magic_login_request.php" class="mb-0">
-            <div class="mb-3">
+            <div class="input-group input-group-lg">
               <input type="email" class="form-control" id="identifier" name="identifier" placeholder="Email address" required>
+              <button class="btn btn-primary" type="submit" aria-label="Login" title="Login" style="font-size:1.25rem; line-height:1; padding-inline:0.9rem">
+                &rsaquo;
+              </button>
             </div>
-            <button class="btn btn-primary w-100" type="submit">Login</button>
           </form>
         </div>
       </div>
