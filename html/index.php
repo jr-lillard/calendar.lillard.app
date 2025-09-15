@@ -56,13 +56,14 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
 
       /* Bigger chevron that fills the button area */
       .login-chevron-btn {
-        font-size: 2rem;       /* larger glyph */
-        line-height: 1;        /* tight line height so the glyph is centered */
-        padding: 0 .5rem;      /* minimal horizontal padding */
+        /* Make the chevron visually dominate the button area */
+        font-size: 2.75rem;    /* larger glyph */
+        line-height: .9;       /* slightly tighter to center better */
+        padding: 0 .25rem;     /* minimal horizontal padding */
         display: inline-flex;  /* center the glyph inside the button */
         align-items: center;
         justify-content: center;
-        min-width: 2.5rem;     /* give the chevron visual weight */
+        min-width: 3.25rem;    /* wider button for a bolder chevron */
       }
     </style>
   </head>
