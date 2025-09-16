@@ -56,17 +56,16 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
       .flat-panel,
       .form-control { border-radius: 0 !important; }
 
-      /* Chevron button: default sizing (Bootstrap Icons at 1em) */
+      /* Chevron button inside input group: look like a real button */
       .login-chevron-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: .375rem .5rem; /* default-ish padding */
-        border: 0; box-shadow: none !important;
-        background: transparent; /* flat look */
-        color: #0d6efd;          /* primary icon color */
+        padding: .375rem .75rem; /* Bootstrap default btn padding */
+        line-height: 1; /* keep icon nicely centered */
       }
-      .login-chevron-btn:focus { outline: none !important; }
+      .login-chevron-btn .bi { font-size: 1rem; }
+      .login-chevron-btn:focus { outline: none !important; box-shadow: none !important; }
     </style>
   </head>
   <body class="bg-white">
@@ -82,7 +81,7 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
           <form method="post" action="magic_login_request.php" class="mb-0">
             <div class="input-group">
               <input type="email" class="form-control" id="identifier" name="identifier" placeholder="Email address" required>
-              <button class="login-chevron-btn" type="submit" aria-label="Login" title="Login">
+              <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Login" title="Login">
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
