@@ -18,6 +18,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Enter a valid email address.';
     } else {
+        // Always attempt to issue an OTP and proceed to the verify screen; never dead-end here.
         try {
             // Allow domain alias mapping for lookup (e.g., jr@lillard.org -> jr@lillard.dev)
             $lookupEmail = auth_canonicalize_login_email($email);
@@ -35,7 +36,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                         $ins = $pdo->prepare('INSERT INTO users (email) VALUES (?)');
                         $ins->execute([$lookupEmail]);
                     } catch (Throwable $e2) {
-                        throw $e2; // Surface to outer catch → generic error shown
+                        // If user creation fails, still surface a generic error below
+                        throw $e2;
                     }
                 }
                 // Re-select
@@ -46,22 +48,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($user) {
                 $ttl = (int)($cfg['otp_ttl_minutes'] ?? 10); // short expiry
                 $code = auth_issue_otp($pdo, (int)$user['id'], $ttl);
-                // Send code via email (SMTP2GO)
+                // Try to send code via email (SMTP2GO), but don't block the UX if it fails.
                 $mins = max(1, min(60, $ttl));
                 $subj = 'Your sign-in code';
                 $text = "Your sign-in code is: $code\n\nThis code expires in $mins minutes.\nIf you didn't request this, you can ignore this email.";
-                // Build HTML body in a way that avoids brittle escaping
                 $htmlCode = htmlspecialchars($code, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                 $html  = "<p>Your sign-in code is:</p>";
                 $html .= "<p style=\"font-size:20px;\"><strong>{$htmlCode}</strong></p>";
                 $html .= "<p>This code expires in " . (int)$mins . " minutes.</p>";
                 $html .= "<p>If you didn’t request this, you can ignore this email.</p>";
-                $sent = auth_send_email($email, $subj, $text, $html);
+                try {
+                    $sent = auth_send_email($email, $subj, $text, $html);
+                    if (!$sent) {
+                        // Lightweight server-side log for diagnostics; do not block UX
+                        @file_put_contents(__DIR__ . '/sessions/otp_error.log', date('c') . " send failed for $email\n", FILE_APPEND);
+                    }
+                } catch (Throwable $mx) {
+                    @file_put_contents(__DIR__ . '/sessions/otp_error.log', date('c') . " exception sending to $email: " . $mx->getMessage() . "\n", FILE_APPEND);
+                }
                 // In dev, still show code inline in case email is not configured.
                 $devCode = $code;
                 $issued = true;
+            } else {
+                // Could not find or create user
+                $error = 'Could not send code. Try again.';
             }
         } catch (Throwable $e) {
+            // Log and proceed to show a friendly error. We do not expose internal details.
+            @file_put_contents(__DIR__ . '/sessions/otp_error.log', date('c') . " fatal in otp_request: " . $e->getMessage() . "\n", FILE_APPEND);
             $error = 'Could not send code. Try again.';
         }
     }
