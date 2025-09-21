@@ -33,4 +33,23 @@ return [
         'device_cookie_name' => 'cal_dev',
         'device_cookie_days' => 1825, // 5 years
     ],
+    // One-time passcode (OTP) lifetime in minutes for email 6-digit codes
+    'otp_ttl_minutes' => 10,
+
+    // Optional: map login email domains to a canonical domain for lookup.
+    // Example: allow user@lillard.org to match a record stored as user@lillard.dev
+    // while still sending the OTP to the submitted address.
+    'email_alias_domains' => [
+        // 'lillard.org' => 'lillard.dev',
+    ],
+
+    // SMTP2GO (email delivery for OTP codes)
+    'smtp2go' => [
+        // Add your SMTP2GO API key here. Do not commit real keys to git.
+        'api_key' => '',
+        // From address used to send OTP codes
+        'from_email' => 'calendar@lillard.dev',
+        // Optional display name
+        'from_name' => 'Family Calendar',
+    ],
 ];

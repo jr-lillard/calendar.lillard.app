@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Authentication helpers: magic-link tokens and long-lived device tokens.
+ * Authentication helpers: one-time passcodes (OTP), magic-link tokens (legacy),
+ * and long-lived device tokens.
  */
 
 function auth_config(): array {
@@ -14,7 +15,30 @@ function auth_config(): array {
     $cfg['magic']['max_uses'] = (int)($cfg['magic']['max_uses'] ?? 10);
     $cfg['magic']['device_cookie_name'] = $cfg['magic']['device_cookie_name'] ?? 'cal_dev';
     $cfg['magic']['device_cookie_days'] = (int)($cfg['magic']['device_cookie_days'] ?? (365*5));
+    // SMTP2GO (optional) for sending OTP emails
+    $cfg['smtp2go'] = $cfg['smtp2go'] ?? [];
+    $cfg['smtp2go']['api_key'] = $cfg['smtp2go']['api_key'] ?? '';
+    $cfg['smtp2go']['from_email'] = $cfg['smtp2go']['from_email'] ?? 'calendar@lillard.dev';
+    $cfg['smtp2go']['from_name'] = $cfg['smtp2go']['from_name'] ?? 'Family Calendar';
+    // OTP expiry (minutes). Code clamps to a short period, default 10.
+    $cfg['otp_ttl_minutes'] = (int)($cfg['otp_ttl_minutes'] ?? 10);
     return $cfg;
+}
+
+/**
+ * Canonicalize a login email for user lookup without changing the destination address.
+ * This allows aliases like user@lillard.org to match a user stored as user@lillard.dev.
+ */
+function auth_canonicalize_login_email(string $email): string {
+    $email = trim(strtolower($email));
+    if ($email === '' || strpos($email, '@') === false) return $email;
+    [$local, $domain] = explode('@', $email, 2);
+    $cfg = auth_config();
+    $map = (array)($cfg['email_alias_domains'] ?? []);
+    if (isset($map[$domain]) && is_string($map[$domain]) && $map[$domain] !== '') {
+        $domain = strtolower((string)$map[$domain]);
+    }
+    return $local . '@' . $domain;
 }
 
 function auth_pdo(): PDO {
@@ -34,6 +58,16 @@ function auth_ensure_tables(PDO $pdo): void {
         max_uses INT NOT NULL DEFAULT 10,
         uses INT NOT NULL DEFAULT 0,
         last_used_at DATETIME NULL,
+        INDEX (user_id), INDEX (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS otp_codes (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        code_hash VARBINARY(32) NOT NULL,
+        created_at DATETIME NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used TINYINT(1) NOT NULL DEFAULT 0,
+        used_at DATETIME NULL,
         INDEX (user_id), INDEX (expires_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     $pdo->exec("CREATE TABLE IF NOT EXISTS device_tokens (
@@ -106,6 +140,96 @@ function auth_try_device_login(): bool {
         }
     } catch (Throwable $e) {
         // ignore
+    }
+    return false;
+}
+
+/**
+ * Issue a 6-digit OTP code for the given user. Returns the raw code.
+ * TTL is clamped to a short interval (default 10 minutes).
+ */
+function auth_issue_otp(PDO $pdo, int $userId, int $ttlMinutes = 10): string {
+    auth_ensure_tables($pdo);
+    $ttl = max(1, min(60, (int)$ttlMinutes)); // 1..60 minutes
+    // 6-digit numeric code with leading zeros allowed
+    $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $hash = auth_hash($code);
+    $now = new DateTimeImmutable('now');
+    $exp = $now->add(new DateInterval('PT' . $ttl . 'M'));
+    // Optional: clean up old codes for this user
+    $pdo->prepare("DELETE FROM otp_codes WHERE user_id = ? AND (expires_at < NOW() OR used = 1)")->execute([$userId]);
+    $stmt = $pdo->prepare("INSERT INTO otp_codes (user_id, code_hash, created_at, expires_at, used) VALUES (?,?,?,?,0)");
+    $stmt->execute([$userId, $hash, $now->format('Y-m-d H:i:s'), $exp->format('Y-m-d H:i:s')]);
+    return $code;
+}
+
+/**
+ * Verify a 6-digit OTP for the given user. On success, marks it used and returns true.
+ */
+function auth_verify_otp(PDO $pdo, int $userId, string $code): bool {
+    auth_ensure_tables($pdo);
+    $code = preg_replace('/\D+/', '', $code); // digits only
+    if ($code === '' || strlen($code) > 6) return false;
+    $hash = auth_hash(str_pad($code, 6, '0', STR_PAD_LEFT));
+    $stmt = $pdo->prepare("SELECT id, expires_at, used FROM otp_codes WHERE user_id = ? AND code_hash = ? LIMIT 1");
+    $stmt->execute([$userId, $hash]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return false;
+    if ((int)$row['used'] === 1) return false;
+    if (new DateTimeImmutable((string)$row['expires_at']) < new DateTimeImmutable('now')) return false;
+    $pdo->prepare("UPDATE otp_codes SET used = 1, used_at = NOW() WHERE id = ?")->execute([(int)$row['id']]);
+    return true;
+}
+
+/**
+ * Send an email via SMTP2GO HTTP API. Returns true on success.
+ * Requires config smtp2go.api_key and smtp2go.from_email.
+ */
+function auth_send_email(string $toEmail, string $subject, string $textBody, ?string $htmlBody = null): bool {
+    $cfg = auth_config();
+    $apiKey = trim((string)($cfg['smtp2go']['api_key'] ?? ''));
+    $fromEmail = trim((string)($cfg['smtp2go']['from_email'] ?? ''));
+    $fromName = trim((string)($cfg['smtp2go']['from_name'] ?? ''));
+    if ($apiKey === '' || $fromEmail === '') {
+        return false;
+    }
+    $payload = [
+        'api_key' => $apiKey,
+        'to' => [ $toEmail ],
+        'sender' => $fromEmail,
+        'subject' => $subject,
+        'text_body' => $textBody,
+    ];
+    if ($fromName !== '') {
+        $payload['from'] = sprintf('%s <%s>', $fromName, $fromEmail);
+    }
+    if ($htmlBody !== null && $htmlBody !== '') {
+        $payload['html_body'] = $htmlBody;
+    }
+    $json = json_encode($payload);
+    if ($json === false) return false;
+
+    $ch = curl_init('https://api.smtp2go.com/v3/email/send');
+    if ($ch === false) return false;
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
+        CURLOPT_POSTFIELDS => $json,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $resp = curl_exec($ch);
+    $err = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($resp === false) {
+        return false;
+    }
+    // SMTP2GO returns JSON with { 'data': { 'succeeded': 1, ... } } on success
+    $decoded = json_decode($resp, true);
+    if ($code >= 200 && $code < 300 && is_array($decoded)) {
+        $succeeded = $decoded['data']['succeeded'] ?? null;
+        if ($succeeded === 1) return true;
     }
     return false;
 }

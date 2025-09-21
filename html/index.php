@@ -78,9 +78,9 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
         <?php endif; ?>
 
         <div class="flat-panel p-4">
-          <form method="post" action="magic_login_request.php" class="mb-0">
+          <form method="post" action="otp_request.php" class="mb-0">
             <div class="input-group">
-              <input type="email" class="form-control" id="identifier" name="identifier" placeholder="Email address" required>
+              <input type="email" class="form-control" id="email" name="email" placeholder="Email address" required>
               <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Login" title="Login">
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
               </button>
