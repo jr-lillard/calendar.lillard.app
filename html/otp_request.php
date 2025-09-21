@@ -33,9 +33,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $mins = max(1, min(60, $ttl));
                 $subj = 'Your sign-in code';
                 $text = "Your sign-in code is: $code\n\nThis code expires in $mins minutes.\nIf you didn't request this, you can ignore this email.";
-                $html = '<p>Your sign-in code is:</p><p style="font-size:20px;"><strong>' . htmlspecialchars($code, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</strong></p>' .
-                        '<p>This code expires in ' . (int)$mins . ' minutes.</p>' .
-                        '<p>If you didn\' . "t request this, you can ignore this email.</p>";
+                // Build HTML body in a way that avoids brittle escaping
+                $htmlCode = htmlspecialchars($code, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $html  = "<p>Your sign-in code is:</p>";
+                $html .= "<p style=\"font-size:20px;\"><strong>{$htmlCode}</strong></p>";
+                $html .= "<p>This code expires in " . (int)$mins . " minutes.</p>";
+                $html .= "<p>If you didn’t request this, you can ignore this email.</p>";
                 $sent = auth_send_email($email, $subj, $text, $html);
                 // In dev, still show code inline in case email is not configured.
                 $devCode = $code;
