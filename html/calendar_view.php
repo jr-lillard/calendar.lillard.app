@@ -66,6 +66,7 @@ function fetch_url(string $url): string {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= h($cal['name']) ?> · Calendar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>.standalone .a2hs-tip{display:none!important}</style>
   </head>
   <body class="bg-light">
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
@@ -109,5 +110,21 @@ function fetch_url(string $url): string {
       <?php endif; ?>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      (function(){
+        function setStandaloneClass(){
+          var isStandalone = (window.navigator.standalone === true) ||
+                             (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+          var root = document.documentElement;
+          root.classList.toggle('standalone', !!isStandalone);
+          root.classList.toggle('not-standalone', !isStandalone);
+        }
+        document.addEventListener('DOMContentLoaded', setStandaloneClass);
+        try {
+          var mm = window.matchMedia && window.matchMedia('(display-mode: standalone)');
+          if (mm && typeof mm.addEventListener === 'function') mm.addEventListener('change', setStandaloneClass);
+        } catch(_){}
+      })();
+    </script>
   </body>
   </html>

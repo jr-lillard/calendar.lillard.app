@@ -14,7 +14,8 @@ $devCode = null;
 $error = null;
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $email = trim((string)($_POST['email'] ?? ''));
+    // Accept either 'email' or a neutral field name 'eml' from the login form
+    $email = trim((string)($_POST['email'] ?? $_POST['eml'] ?? ''));
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Enter a valid email address.';
     } else {

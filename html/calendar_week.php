@@ -205,6 +205,8 @@ if ($printMode) {
         --top-gap: 0.06in;
         --allday-gap: 0.10in;
       }
+      /* Hide Add-to-Home-Screen tips when running as an installed app */
+      .standalone .a2hs-tip{display:none!important}
       /* Allow dynamic tuning of print safety via ?fudge (inches) */
       <?php
         $fudge = null;
@@ -501,6 +503,7 @@ if ($printMode) {
       }
     </style>
   </head>
+  
   <body class="bg-light min-vh-100<?= $printMode ? ' print-preview' : '' ?>">
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm">
       <div class="container-fluid">
@@ -749,6 +752,23 @@ if ($printMode) {
       </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Detect PWA/standalone mode and toggle a class so we can hide A2HS tips
+      (function(){
+        function setStandaloneClass(){
+          var isStandalone = (window.navigator.standalone === true) ||
+                             (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+          var root = document.documentElement;
+          root.classList.toggle('standalone', !!isStandalone);
+          root.classList.toggle('not-standalone', !isStandalone);
+        }
+        document.addEventListener('DOMContentLoaded', setStandaloneClass);
+        try {
+          var mm = window.matchMedia && window.matchMedia('(display-mode: standalone)');
+          if (mm && typeof mm.addEventListener === 'function') mm.addEventListener('change', setStandaloneClass);
+        } catch(_){}
+      })();
+    </script>
     <script>
       (function(){
         const startHour = 7, endHour = 24; // 17 slots
