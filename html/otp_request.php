@@ -21,12 +21,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         try {
             // Allow domain alias mapping for lookup (e.g., jr@lillard.org -> jr@lillard.dev)
             $lookupEmail = auth_canonicalize_login_email($email);
+            // Find or create the user so the OTP flow never dead-ends on the login screen
             $stmt = $pdo->prepare('SELECT id, email FROM users WHERE email = ? LIMIT 1');
             $stmt->execute([$lookupEmail]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$user) {
-                $error = 'No account found for that email.';
-            } else {
+                // Create a minimal user record with this email. Try with created_at; fall back to email only.
+                try {
+                    $ins = $pdo->prepare('INSERT INTO users (email, created_at) VALUES (?, NOW())');
+                    $ins->execute([$lookupEmail]);
+                } catch (Throwable $e) {
+                    try {
+                        $ins = $pdo->prepare('INSERT INTO users (email) VALUES (?)');
+                        $ins->execute([$lookupEmail]);
+                    } catch (Throwable $e2) {
+                        throw $e2; // Surface to outer catch → generic error shown
+                    }
+                }
+                // Re-select
+                $stmt = $pdo->prepare('SELECT id, email FROM users WHERE email = ? LIMIT 1');
+                $stmt->execute([$lookupEmail]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            if ($user) {
                 $ttl = (int)($cfg['otp_ttl_minutes'] ?? 10); // short expiry
                 $code = auth_issue_otp($pdo, (int)$user['id'], $ttl);
                 // Send code via email (SMTP2GO)
