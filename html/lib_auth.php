@@ -194,7 +194,7 @@ function auth_send_email(string $toEmail, string $subject, string $textBody, ?st
         return false;
     }
     $payload = [
-        'api_key' => $apiKey,
+        // API key will be passed via HTTP header per SMTP2GO v3 docs
         'to' => [ $toEmail ],
         'sender' => $fromEmail,
         'subject' => $subject,
@@ -213,7 +213,10 @@ function auth_send_email(string $toEmail, string $subject, string $textBody, ?st
     if ($ch === false) return false;
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Smtp2go-Api-Key: ' . $apiKey,
+        ],
         CURLOPT_POSTFIELDS => $json,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 10,
@@ -223,6 +226,8 @@ function auth_send_email(string $toEmail, string $subject, string $textBody, ?st
     $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
     if ($resp === false) {
+        // Log transport error
+        @auth_log_smtp2go("HTTP transport error: code=$code err=" . ($err ?: 'unknown'));
         return false;
     }
     // SMTP2GO returns JSON with { 'data': { 'succeeded': 1, ... } } on success
@@ -230,8 +235,25 @@ function auth_send_email(string $toEmail, string $subject, string $textBody, ?st
     if ($code >= 200 && $code < 300 && is_array($decoded)) {
         $succeeded = $decoded['data']['succeeded'] ?? null;
         if ($succeeded === 1) return true;
+        // Log non-successful response
+        @auth_log_smtp2go('Non-success response: http=' . $code . ' body=' . substr($resp, 0, 1000));
     }
+    // Log unexpected / error HTTP codes
+    @auth_log_smtp2go('HTTP error or invalid JSON: http=' . $code . ' body=' . substr($resp, 0, 1000));
     return false;
+}
+
+/**
+ * Append a line to sessions/otp_error.log with SMTP2GO details.
+ */
+function auth_log_smtp2go(string $line): void {
+    $logDir = __DIR__ . '/sessions';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+    $logFile = $logDir . '/otp_error.log';
+    $stamp = date('c');
+    @file_put_contents($logFile, $stamp . ' smtp2go: ' . $line . "\n", FILE_APPEND);
 }
 
 function auth_issue_magic_link(PDO $pdo, int $userId): string {
