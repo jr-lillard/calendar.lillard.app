@@ -155,22 +155,20 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
           // Ensure autofocus takes effect
           try { vis.focus(); vis.selectionStart = vis.value.length; } catch(_){}
 
-          async function submitNow(){
+          function submitNow(){
             var val = (vis.value || '').trim();
             if (!val) { vis.focus(); return; }
-            try {
-              var body = new URLSearchParams();
-              body.set('eml', val);
-              await fetch('otp_request.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                credentials: 'include',
-                body: body.toString()
-              });
-              window.location.href = 'otp_verify.php';
-            } catch (e) {
-              window.location.href = 'otp_verify.php';
-            }
+            // Post to otp_request.php so it renders the Verify Code view
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'otp_request.php';
+            var hid = document.createElement('input');
+            hid.type = 'hidden';
+            hid.name = 'eml';
+            hid.value = val;
+            form.appendChild(hid);
+            document.body.appendChild(form);
+            form.submit();
           }
           go.addEventListener('click', submitNow);
           vis.addEventListener('keydown', function(e){

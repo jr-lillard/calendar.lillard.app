@@ -82,6 +82,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 }
 
+// If this endpoint is reached via GET, do not render an alternate legacy form.
+// Redirect back to the primary login so the flow is consistent.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    header('Location: index.php');
+    exit;
+}
+
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 ?>
 <!doctype html>
@@ -91,6 +98,12 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Enter Code · Calendar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+      .code-input::placeholder { text-align: center; }
+      .code-input { text-align: center; }
+      .btn-icon { display: flex; align-items: center; justify-content: center; min-width: 3rem; }
+    </style>
   </head>
   <body class="bg-white">
     <main class="container d-flex justify-content-center align-items-center min-vh-100">
@@ -99,26 +112,29 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
           <div class="alert alert-danger mb-3"><?= h($error) ?></div>
         <?php endif; ?>
 
-        <?php if ($issued): ?>
-          <form method="post" action="otp_verify.php" class="mb-3">
+          <form method="post" action="otp_verify.php" class="mb-3" autocomplete="off" novalidate>
             <input type="hidden" name="email" value="<?= h($email) ?>">
-            <div class="mb-2 text-muted small">We sent a 6‑digit code to <?= h($email) ?>. It expires soon.</div>
+            <div class="mb-2 text-muted small text-center">We sent a 6‑digit code to <?= h($email) ?>. It expires soon.</div>
             <div class="input-group">
-              <input type="text" inputmode="numeric" pattern="\d*" maxlength="6" class="form-control" name="code" placeholder="6‑digit code" required autofocus>
-              <button class="btn btn-primary" type="submit" aria-label="Verify" title="Verify">Verify</button>
+              <input type="text"
+                     inputmode="numeric"
+                     pattern="\n?\d*"
+                     maxlength="6"
+                     class="form-control code-input"
+                     name="code"
+                     placeholder="enter your 6‑digit code"
+                     autocomplete="one-time-code"
+                     required
+                     autofocus>
+              <button class="btn btn-primary btn-icon" type="submit" aria-label="Verify">
+                <i class="bi bi-chevron-right"></i>
+              </button>
             </div>
           </form>
           <?php if ($devCode): ?>
             <div class="alert alert-info py-2">Dev code: <strong><?= h($devCode) ?></strong></div>
           <?php endif; ?>
-        <?php else: ?>
-          <form method="post" class="mb-3">
-            <div class="input-group">
-              <input type="email" class="form-control" name="email" placeholder="Email address" value="<?= h($email) ?>" required autofocus>
-              <button class="btn btn-primary" type="submit">Send code</button>
-            </div>
-          </form>
-        <?php endif; ?>
+        
       </div>
     </main>
   </body>
