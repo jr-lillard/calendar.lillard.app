@@ -67,6 +67,13 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
         line-height: 1; /* keep icon nicely centered */
       }
       .login-chevron-btn .bi { font-size: 1rem; }
+      /* Center placeholder text, keep typed text left-aligned */
+      .form-control { text-align: left; }
+      .form-control::placeholder { text-align: center; opacity: .6; }
+      .form-control::-webkit-input-placeholder { text-align: center; opacity: .6; }
+      .form-control:-ms-input-placeholder { text-align: center; }
+      .form-control:placeholder-shown { text-align: center; }
+      .form-control:focus { text-align: left; }
       /* Hide Safari/Keychain autofill UI as much as possible */
       form[autocomplete="off"] input::autofill,
       form[autocomplete="off"] input:-webkit-autofill {
@@ -100,8 +107,8 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
                 autocorrect="off"
                 spellcheck="false"
                 autocomplete="off"
-                placeholder="Email address"
-                aria-label="Email address"
+                placeholder="what is your email address?"
+                aria-label="what is your email address?"
                 autofocus
               >
               <button class="btn btn-primary login-chevron-btn" type="button" aria-label="Continue" title="Continue" id="goBtn">
