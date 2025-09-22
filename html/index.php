@@ -5,6 +5,10 @@ declare(strict_types=1);
 // Credentials live in html/config.php (git-ignored). See config.php.example.
 
 session_start();
+// Force fresh load of the login shell to avoid stale CDN/browser cache
+@header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+@header('Pragma: no-cache');
+@header('Expires: 0');
 
 // Magic links are the only login method
 $dbReady = false;
