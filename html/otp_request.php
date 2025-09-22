@@ -28,14 +28,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $stmt->execute([$lookupEmail]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$user) {
-                // Create a minimal user record with this email. Try with created_at; fall back to email only.
+                // Create a minimal user record with this email. The current schema requires a non-null
+                // password_hash column, so generate a random throwaway hash. This account will authenticate
+                // via OTP/device tokens only; the password value is never used.
                 try {
-                    $ins = $pdo->prepare('INSERT INTO users (email, created_at) VALUES (?, NOW())');
-                    $ins->execute([$lookupEmail]);
+                    $rand = bin2hex(random_bytes(16));
+                    $ph = password_hash($rand, PASSWORD_DEFAULT);
+                    $ins = $pdo->prepare('INSERT INTO users (email, password_hash, created_at) VALUES (?,?, NOW())');
+                    $ins->execute([$lookupEmail, $ph]);
                 } catch (Throwable $e) {
                     try {
-                        $ins = $pdo->prepare('INSERT INTO users (email) VALUES (?)');
-                        $ins->execute([$lookupEmail]);
+                        $rand = bin2hex(random_bytes(16));
+                        $ph = password_hash($rand, PASSWORD_DEFAULT);
+                        $ins = $pdo->prepare('INSERT INTO users (email, password_hash) VALUES (?,?)');
+                        $ins->execute([$lookupEmail, $ph]);
                     } catch (Throwable $e2) {
                         // If user creation fails, still surface a generic error below
                         throw $e2;
