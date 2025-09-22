@@ -67,6 +67,12 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
         line-height: 1; /* keep icon nicely centered */
       }
       .login-chevron-btn .bi { font-size: 1rem; }
+      /* Hide Safari/Keychain autofill UI as much as possible */
+      form[autocomplete="off"] input::autofill,
+      form[autocomplete="off"] input:-webkit-autofill {
+        box-shadow: 0 0 0px 1000px #ffffff inset !important;
+        -webkit-text-fill-color: inherit !important;
+      }
       .login-chevron-btn:focus { outline: none !important; box-shadow: none !important; }
     </style>
   </head>
@@ -80,27 +86,29 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
         <?php endif; ?>
 
         <div class="flat-panel p-4">
-          <form method="post" action="otp_request.php" class="mb-0" autocomplete="off" novalidate id="loginForm">
+<?php $rnd = bin2hex(random_bytes(4)); $inpId = 'in_'. $rnd; $inpName = 'eml_'. $rnd; ?>
+          <!-- Standard input + chevron button (anti‑autofill, JS submit) -->
+          <div class="mb-0" id="loginShell" role="presentation">
             <div class="input-group">
               <input
+                id="<?php echo h($inpId); ?>"
+                name="<?php echo h($inpName); ?>"
                 type="text"
                 class="form-control"
-                id="eml_input"
-                name="eml_vis"
-                placeholder="Email address"
                 inputmode="email"
                 autocapitalize="none"
                 autocorrect="off"
                 spellcheck="false"
                 autocomplete="off"
-                required
-                readonly>
-              <input type="hidden" name="eml" id="eml_hidden" value="">
-              <button class="btn btn-primary login-chevron-btn" type="submit" aria-label="Continue" title="Continue">
+                placeholder="Email address"
+                aria-label="Email address"
+                autofocus
+              >
+              <button class="btn btn-primary login-chevron-btn" type="button" aria-label="Continue" title="Continue" id="goBtn">
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </main>
@@ -125,26 +133,37 @@ if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
         } catch(_){}
       })();
 
-      // Reduce Safari auto-login suggestions:
-      //  - Keep the visible field readonly until user interacts, then enable.
-      //  - Use a neutral name (eml_vis) and copy to hidden "eml" on submit.
+      // Standard input + JS submit to reduce Safari saved‑login prompts
       (function(){
-        function enableInputOnce(){
-          var vis = document.getElementById('eml_input');
-          if (vis && vis.hasAttribute('readonly')) vis.removeAttribute('readonly');
-        }
         document.addEventListener('DOMContentLoaded', function(){
-          var vis = document.getElementById('eml_input');
-          var hid = document.getElementById('eml_hidden');
-          var frm = document.getElementById('loginForm');
-          if (!vis || !hid || !frm) return;
-          // Unlock on first user interaction
-          vis.addEventListener('focus', enableInputOnce, { once:true });
-          vis.addEventListener('pointerdown', enableInputOnce, { once:true });
-          vis.addEventListener('touchstart', enableInputOnce, { once:true });
-          // Copy to hidden field on submit
-          frm.addEventListener('submit', function(){
-            hid.value = vis.value || '';
+          var inpId = <?php echo json_encode($inpId, JSON_UNESCAPED_SLASHES); ?>;
+          var vis = document.getElementById(inpId);
+          var go  = document.getElementById('goBtn');
+          if (!vis || !go) return;
+
+          // Ensure autofocus takes effect
+          try { vis.focus(); vis.selectionStart = vis.value.length; } catch(_){}
+
+          async function submitNow(){
+            var val = (vis.value || '').trim();
+            if (!val) { vis.focus(); return; }
+            try {
+              var body = new URLSearchParams();
+              body.set('eml', val);
+              await fetch('otp_request.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                credentials: 'include',
+                body: body.toString()
+              });
+              window.location.href = 'otp_verify.php';
+            } catch (e) {
+              window.location.href = 'otp_verify.php';
+            }
+          }
+          go.addEventListener('click', submitNow);
+          vis.addEventListener('keydown', function(e){
+            if (e.key === 'Enter') { e.preventDefault(); submitNow(); }
           });
         });
       })();
