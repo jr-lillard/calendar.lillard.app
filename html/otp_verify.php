@@ -49,14 +49,21 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+      /* Match login look */
+      .verify-wrap { max-width: 420px; width: 100%; }
+      body { background: #ffffff !important; }
       .code-input::placeholder { text-align: center; }
-      .code-input { text-align: center; }
+      .code-input { text-align: center; font-size: 1.25rem; }
       .btn-icon { display: flex; align-items: center; justify-content: center; min-width: 3rem; }
+      .btn-icon .bi { font-size: 1rem; }
+      .flat-panel *, .form-control, .btn { box-shadow: none !important; }
+      .form-control:focus, .btn:focus { box-shadow: none !important; outline: none !important; }
+      .form-control { border-radius: 0 !important; }
     </style>
   </head>
   <body class="bg-white">
     <main class="container d-flex justify-content-center align-items-center min-vh-100">
-      <div class="w-100" style="max-width:420px;">
+      <div class="verify-wrap flat-panel">
         <?php if ($error): ?>
           <div class="alert alert-danger mb-3"><?= h($error) ?></div>
         <?php endif; ?>
@@ -78,7 +85,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
             </button>
           </div>
         </form>
-        <form method="post" action="otp_request.php" class="text-center">
+        <form method="post" action="otp_request.php" class="text-center mb-0">
           <input type="hidden" name="email" value="<?= h($email) ?>">
           <button class="btn btn-link p-0">Resend code</button>
         </form>
@@ -86,4 +93,3 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
     </main>
   </body>
  </html>
-

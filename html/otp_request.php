@@ -106,41 +106,45 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+      /* Match login look */
+      .verify-wrap { max-width: 420px; width: 100%; }
+      body { background: #ffffff !important; }
       .code-input::placeholder { text-align: center; }
-      .code-input { text-align: center; }
+      .code-input { text-align: center; font-size: 1.25rem; }
       .btn-icon { display: flex; align-items: center; justify-content: center; min-width: 3rem; }
+      .btn-icon .bi { font-size: 1rem; }
+      .flat-panel *, .form-control, .btn { box-shadow: none !important; }
+      .form-control:focus, .btn:focus { box-shadow: none !important; outline: none !important; }
+      .form-control { border-radius: 0 !important; }
     </style>
   </head>
   <body class="bg-white">
     <main class="container d-flex justify-content-center align-items-center min-vh-100">
-      <div class="w-100" style="max-width:420px;">
+      <div class="verify-wrap flat-panel">
         <?php if ($error): ?>
           <div class="alert alert-danger mb-3"><?= h($error) ?></div>
         <?php endif; ?>
-
-          <form method="post" action="otp_verify.php" class="mb-3" autocomplete="off" novalidate>
-            <input type="hidden" name="email" value="<?= h($email) ?>">
-            <div class="mb-2 text-muted small text-center">We sent a 6‑digit code to <?= h($email) ?>. It expires soon.</div>
-            <div class="input-group">
-              <input type="text"
-                     inputmode="numeric"
-                     pattern="\n?\d*"
-                     maxlength="6"
-                     class="form-control code-input"
-                     name="code"
-                     placeholder="enter your 6‑digit code"
-                     autocomplete="one-time-code"
-                     required
-                     autofocus>
-              <button class="btn btn-primary btn-icon" type="submit" aria-label="Verify">
-                <i class="bi bi-chevron-right"></i>
-              </button>
-            </div>
-          </form>
-          <?php if ($devCode): ?>
-            <div class="alert alert-info py-2">Dev code: <strong><?= h($devCode) ?></strong></div>
-          <?php endif; ?>
-        
+        <form method="post" action="otp_verify.php" class="mb-0" autocomplete="off" novalidate>
+          <input type="hidden" name="email" value="<?= h($email) ?>">
+          <div class="input-group">
+            <input type="text"
+                   inputmode="numeric"
+                   pattern="\n?\d*"
+                   maxlength="6"
+                   class="form-control code-input"
+                   name="code"
+                   placeholder="enter your 6‑digit code"
+                   autocomplete="one-time-code"
+                   required
+                   autofocus>
+            <button class="btn btn-primary btn-icon" type="submit" aria-label="Verify">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </form>
+        <?php if ($devCode): ?>
+          <div class="text-center text-muted small mt-3">Dev code: <strong><?= h($devCode) ?></strong></div>
+        <?php endif; ?>
       </div>
     </main>
   </body>
