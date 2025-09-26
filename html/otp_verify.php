@@ -4,6 +4,12 @@ session_start();
 
 require_once __DIR__ . '/lib_auth.php';
 
+$nocache = function(){
+    @header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    @header('Pragma: no-cache');
+    @header('Expires: 0');
+};
+$nocache();
 $cfg = auth_config();
 if (!empty($cfg['timezone'])) { @date_default_timezone_set((string)$cfg['timezone']); }
 
@@ -76,7 +82,7 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
                    maxlength="6"
                    class="form-control code-input"
                    name="code"
-                   placeholder="enter your 6‑digit code"
+                   placeholder="enter the code sent to your email"
                    autocomplete="one-time-code"
                    required
                    autofocus>

@@ -4,13 +4,19 @@ session_start();
 
 require_once __DIR__ . '/lib_auth.php';
 
+$nocache = function(){
+    @header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    @header('Pragma: no-cache');
+    @header('Expires: 0');
+};
+$nocache();
 $cfg = auth_config();
 if (!empty($cfg['timezone'])) { @date_default_timezone_set((string)$cfg['timezone']); }
 
 $pdo = auth_pdo();
 $email = '';
 $issued = false;
-$devCode = null;
+$devCode = null; // no longer displayed in UI
 $error = null;
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -73,8 +79,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 } catch (Throwable $mx) {
                     @file_put_contents(__DIR__ . '/sessions/otp_error.log', date('c') . " exception sending to $email: " . $mx->getMessage() . "\n", FILE_APPEND);
                 }
-                // In dev, still show code inline in case email is not configured.
-                $devCode = $code;
+                // Do not surface the code in the UI. Leave $devCode unused to avoid leaking.
+                $devCode = null;
                 $issued = true;
             } else {
                 // Could not find or create user
@@ -129,11 +135,11 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
           <div class="input-group">
             <input type="text"
                    inputmode="numeric"
-                   pattern="\n?\d*"
+                   pattern="\d*"
                    maxlength="6"
                    class="form-control code-input"
                    name="code"
-                   placeholder="enter your 6‑digit code"
+                   placeholder="enter the code sent to your email"
                    autocomplete="one-time-code"
                    required
                    autofocus>
@@ -142,9 +148,6 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
             </button>
           </div>
         </form>
-        <?php if ($devCode): ?>
-          <div class="text-center text-muted small mt-3">Dev code: <strong><?= h($devCode) ?></strong></div>
-        <?php endif; ?>
       </div>
     </main>
   </body>
