@@ -59,7 +59,8 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUB
       .verify-wrap { max-width: 420px; width: 100%; }
       body { background: #ffffff !important; }
       .code-input::placeholder { text-align: center; }
-      .code-input { text-align: center; font-size: 1.25rem; }
+      /* Center text, but use default font size */
+      .code-input { text-align: center; }
       .btn-icon { display: flex; align-items: center; justify-content: center; min-width: 3rem; }
       .btn-icon .bi { font-size: 1rem; }
       .flat-panel *, .form-control, .btn { box-shadow: none !important; }
