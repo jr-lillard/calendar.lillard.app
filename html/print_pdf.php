@@ -413,7 +413,7 @@ $headerMax = max($baseHeaderMin, $pageH - $topGap - ($rows * $minRowH));
 
 // Estimate required header per day from all‑day badges
 $pdf->SetFont('Helvetica', '', 9);
-$padX = 0.04; $padY = 0.04; $lineH = 0.12; $badgeGap = 0.04; $maxLines = 2;
+$padX = 0.04; $padY = 0.04; $lineH = 0.12; $badgeGap = 0.04; $maxLines = 3; // allow up to 3 lines per all‑day badge
 $bxWidth = max(0.10, $dayW - 0.16) - 2*$padX; // inner text width for a badge
 $neededHeader = $baseHeaderMin;
 for ($d=0; $d<7; $d++) {
@@ -424,12 +424,30 @@ for ($d=0; $d<7; $d++) {
     if (!empty($days[$key]['all'])) {
         foreach ($days[$key]['all'] as $ae) {
             $txt = pdf_strip_unknown_age(pdf_sanitize_punct((string)($ae['summary'] ?? '')));
-            $bdinfo = pdf_parse_birthdate_from_description($ae['description'] ?? '', $tz);
+            $desc = (string)($ae['description'] ?? '');
+            // Birthday/age detection
+            $bdinfo = pdf_parse_birthdate_from_description($desc, $tz);
             $age = pdf_compute_age_for_day($bdinfo['date'], $bdinfo['year'], $date);
-            if (is_int($age) && $age >= 0) { $txt .= ' - '.$age.' yrs'; }
-            $txtW = $pdf->GetStringWidth(pdf_txt($txt));
-            $needLines = 1 + (int)floor($txtW / max(0.01, $bxWidth));
-            $needLines = min($maxLines, max(1, $needLines));
+            $isBirthday = is_int($age) && $age >= 0;
+            // Anniversary detection (flexible patterns)
+            $annivYears = null;
+            $anniSource = (string)$desc . ' ' . $txt;
+            if (preg_match('/\bmarried\b[^\d]{0,20}(\d{4})\b/i', $anniSource, $mAnn)) {
+                $baseYear = (int)$mAnn[1];
+                $annivYears = max(0, ((int)$date->format('Y')) - $baseYear);
+            } elseif (preg_match('/\bmarried\s+on\s+[A-Za-z]{3,9}\s+\d{1,2},\s*(\d{4})\b/i', $anniSource, $mAnn)) {
+                $baseYear = (int)$mAnn[1];
+                $annivYears = max(0, ((int)$date->format('Y')) - $baseYear);
+            }
+
+            if ($isBirthday || $annivYears !== null) {
+                // Reserve three lines: up to two for the title + one for years/age
+                $needLines = 3;
+            } else {
+                $txtW = $pdf->GetStringWidth(pdf_txt($txt));
+                $needLines = 1 + (int)floor($txtW / max(0.01, $bxWidth));
+                $needLines = min($maxLines, max(1, $needLines));
+            }
             $needH = $padY + ($needLines * $lineH) + $padY;
             $sum += $needH + $badgeGap;
         }
@@ -585,17 +603,17 @@ for ($d=0; $d<7; $d++) {
             // Restore default line width for subsequent grid lines
             $pdf->SetLineWidth(0.02);
 
-            // Text (centered). Birthdays: two lines (summary on first, age on second). Others: wrap up to 2 centered lines.
+            // Text (centered). Birthdays/anniversaries: up to 3 lines (title can wrap to 2 + years on third).
             $pdf->SetXY($bx + $padX, $yAll + $padY);
             if ($isBirthday) {
-                $firstLine = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 1); // one line, ellipsized
-                $secondLine = sprintf('%d years old', (int)$age);
-                $content = $firstLine."\n".$secondLine;
+                $titleLines = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 2); // allow up to 2 lines for title
+                $yearsLine = sprintf('%d years old', (int)$age);
+                $content = $titleLines."\n".$yearsLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
             } elseif ($annivYears !== null) {
-                $firstLine = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 1); // one line, ellipsized
-                $secondLine = '(' . (int)$annivYears . ' years)';
-                $content = $firstLine."\n".$secondLine;
+                $titleLines = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 2); // allow up to 2 lines for title
+                $yearsLine = '(' . (int)$annivYears . ' years)';
+                $content = $titleLines."\n".$yearsLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
             } else {
                 $wrapped = pdf_wrap_to_lines(
