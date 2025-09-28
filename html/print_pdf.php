@@ -519,6 +519,16 @@ for ($d=0; $d<7; $d++) {
             $bdinfo = pdf_parse_birthdate_from_description($desc, $tz);
             $age = pdf_compute_age_for_day($bdinfo['date'], $bdinfo['year'], $date);
             $isBirthday = is_int($age) && $age >= 0;
+            // Anniversary: detect marriage year in description or summary (flexible patterns)
+            $annivYears = null;
+            $anniSource = (string)$desc . ' ' . $summaryRaw;
+            if (preg_match('/\bmarried\b[^\d]{0,20}(\d{4})\b/i', $anniSource, $mAnn)) {
+                $baseYear = (int)$mAnn[1];
+                $annivYears = max(0, ((int)$date->format('Y')) - $baseYear);
+            } elseif (preg_match('/\bmarried\s+on\s+[A-Za-z]{3,9}\s+\d{1,2},\s*(\d{4})\b/i', $anniSource, $mAnn)) {
+                $baseYear = (int)$mAnn[1];
+                $annivYears = max(0, ((int)$date->format('Y')) - $baseYear);
+            }
 
             // Layout for a single all‑day badge
             $padX = 0.04; $padY = 0.04;
@@ -531,6 +541,9 @@ for ($d=0; $d<7; $d++) {
             $maxLines = 2;
             // For birthdays we force two centered lines: summary (1 line, ellipsized) + age on second line
             if ($isBirthday) {
+                $needLines = 2;
+            } elseif ($annivYears !== null) {
+                // Anniversary also forces two lines: summary (1 line, ellipsized) + (NN years)
                 $needLines = 2;
             } else {
                 $txtCP = pdf_txt($summaryRaw);
@@ -577,6 +590,11 @@ for ($d=0; $d<7; $d++) {
             if ($isBirthday) {
                 $firstLine = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 1); // one line, ellipsized
                 $secondLine = sprintf('%d years old', (int)$age);
+                $content = $firstLine."\n".$secondLine;
+                $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
+            } elseif ($annivYears !== null) {
+                $firstLine = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 1); // one line, ellipsized
+                $secondLine = '(' . (int)$annivYears . ' years)';
                 $content = $firstLine."\n".$secondLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
             } else {

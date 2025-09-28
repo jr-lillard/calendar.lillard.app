@@ -660,18 +660,40 @@ if ($printMode) {
                     <?php foreach ($allDay as $ev): $clr = css_colors_from_hex($ev['color'] ?? null); ?>
                       <?php 
                         $ageText = '';
+                        $annivText = '';
                         $isHoliday = !empty($ev['is_holiday']);
                         $summaryLC = strtolower((string)($ev['summary'] ?? ''));
-                        if (!$isHoliday && (str_contains($summaryLC, 'birthday') || str_contains($summaryLC, "b-day") || str_contains($summaryLC, "bday"))) {
+                        // Birthday age line (from description birth date/year)
+                        if (!$isHoliday && (str_contains($summaryLC, 'birthday') || str_contains($summaryLC, 'b-day') || str_contains($summaryLC, 'bday'))) {
                           $bd = parse_birthdate_from_description($ev['description'] ?? '', $tz);
                           $age = compute_age_for_day($bd['date'], $bd['year'], $d);
                           if (is_int($age) && $age >= 0) { $ageText = $age . ' years old'; }
                         }
+                        // Anniversary years line — look for a marriage year in the same fielding as birthdays.
+                        // Be flexible: accept patterns like "married in 2012", "married 2012", or
+                        // "married on Month D, 2012" in either description or summary.
+                        if (!$isHoliday) {
+                          $anniSource = trim(((string)($ev['description'] ?? '')) . ' ' . ((string)($ev['summary'] ?? '')));
+                          $matchYear = null;
+                          // Common patterns
+                          if (preg_match('/\bmarried\b[^\d]{0,20}(\d{4})\b/i', $anniSource, $m)) {
+                            $matchYear = (int)$m[1];
+                          } elseif (preg_match('/\bmarried\s+on\s+[A-Za-z]{3,9}\s+\d{1,2},\s*(\d{4})\b/i', $anniSource, $m)) {
+                            $matchYear = (int)$m[1];
+                          }
+                          if (is_int($matchYear) && $matchYear > 0) {
+                            $yrs = max(0, ((int)$d->format('Y')) - $matchYear);
+                            $annivText = '(' . $yrs . ' years)';
+                          }
+                        }
                       ?>
-                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' - '.$ageText : '')) ?>" style="<?= $clr ? 'border-color: '.$clr['bd'].';' : '' ?>">
+                      <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' - '.$ageText : '') . ($annivText ? ' - '.$annivText : '')) ?>" style="<?= $clr ? 'border-color: '.$clr['bd'].';' : '' ?>">
                         <span class="fw-semibold all-day-title"><?= h($ev['summary'] ?: '(No title)') ?></span>
                         <?php if ($ageText): ?>
                           <span class="all-day-age"><?= h($ageText) ?></span>
+                        <?php endif; ?>
+                        <?php if ($annivText): ?>
+                          <span class="all-day-age"><?= h($annivText) ?></span>
                         <?php endif; ?>
                       </div>
                     <?php endforeach; ?>
