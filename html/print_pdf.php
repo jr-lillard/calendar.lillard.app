@@ -435,7 +435,7 @@ $headerMax = max($baseHeaderMin, $pageH - $topGap - ($rows * $minRowH));
 
 // Estimate required header per day from all‑day badges
 $pdf->SetFont('Helvetica', '', 9);
-$padX = 0.04; $padY = 0.04; $lineH = 0.12; $badgeGap = 0.04; $maxLines = 3; // allow up to 3 lines per all‑day badge
+$padX = 0.04; $padY = 0.04; $lineH = 0.12; $badgeGap = 0.04; $maxLines = 2; // limit to 2 lines per all‑day badge
 $bxWidth = max(0.10, $dayW - 0.16) - 2*$padX; // inner text width for a badge
 $neededHeader = $baseHeaderMin;
 for ($d=0; $d<7; $d++) {
@@ -463,8 +463,8 @@ for ($d=0; $d<7; $d++) {
             }
 
             if ($isBirthday || $annivYears !== null) {
-                // Reserve three lines: up to two for the title + one for years/age
-                $needLines = 3;
+                // Reserve two lines total (title single line + years/age second line)
+                $needLines = 2;
             } else {
                 $txtW = $pdf->GetStringWidth(pdf_txt($txt));
                 $needLines = 1 + (int)floor($txtW / max(0.01, $bxWidth));
@@ -625,18 +625,18 @@ for ($d=0; $d<7; $d++) {
             // Restore default line width for subsequent grid lines
             $pdf->SetLineWidth(0.02);
 
-            // Text (centered). Birthdays/anniversaries: up to 3 lines (title can wrap to 2 + years on third).
+            // Text (centered). Birthdays/anniversaries: exactly 2 lines (title single line + years/age).
             $pdf->SetXY($bx + $padX, $yAll + $padY);
             if ($isBirthday) {
-                $titleLines = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 2); // allow up to 2 lines for title
+                $titleLines = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 1); // single-line title
                 $yearsLine = sprintf('%d years old', (int)$age);
                 $content = $titleLines."\n".$yearsLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
             } elseif ($annivYears !== null) {
                 // Anniversary: first line is a clean names line (e.g., "Jennifer + Randy"),
-                // second line shows "(NN years)". Allow the names to wrap to 2 lines if needed.
+                // second line shows "(NN years)". Keep names to a single line to hold total lines to 2.
                 $names = pdf_derive_anniv_names($summaryRaw);
-                $titleLines = pdf_wrap_to_lines($pdf, $names, ($bw - 2*$padX), 2);
+                $titleLines = pdf_wrap_to_lines($pdf, $names, ($bw - 2*$padX), 1);
                 $yearsLine = '(' . (int)$annivYears . ' years)';
                 $content = $titleLines."\n".$yearsLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');

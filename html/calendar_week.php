@@ -719,12 +719,18 @@ if ($printMode) {
                           }
                         ?>
                         <span class="fw-semibold all-day-title"><?= h($titleForAllDay) ?></span>
-                        <?php if ($ageText): ?>
-                          <span class="all-day-age"><?= h($ageText) ?></span>
-                        <?php endif; ?>
-                        <?php if ($annivText): ?>
+                        <?php
+                          // Limit all-day blocks to two lines total:
+                          //  - Line 1: title (single line, ellipsized via CSS)
+                          //  - Line 2: one metadata line (anniversary years OR birthday age)
+                          if ($annivText) {
+                        ?>
                           <span class="all-day-age"><?= h($annivText) ?></span>
-                        <?php endif; ?>
+                        <?php
+                          } elseif ($ageText) {
+                        ?>
+                          <span class="all-day-age"><?= h($ageText) ?></span>
+                        <?php } ?>
                       </div>
                     <?php endforeach; ?>
                   </div>
