@@ -704,75 +704,82 @@ for ($d=0; $d<7; $d++) {
     $sidePad = 0.06;                  // equal left/right outer padding
     $usableW = max(0.10, $dayW - 2*$sidePad);
     foreach ($clusters as $clIdxs) {
-        // Order by start
-        usort($clIdxs, fn($a,$b)=> $items[$a]['startMin'] <=> $items[$b]['startMin']);
-        // Assign columns greedily
-        $cols = []; // each: lastEnd
-        $assign = [];
-        foreach ($clIdxs as $ii) {
-            $placed = false;
-            for ($c=0; $c<count($cols); $c++) {
-                if ($cols[$c] <= $items[$ii]['startMin']) { $cols[$c] = $items[$ii]['endMin']; $assign[$ii] = $c; $placed=true; break; }
-            }
-            if (!$placed) { $cols[] = $items[$ii]['endMin']; $assign[$ii] = count($cols)-1; }
-        }
-        $colCount = max(1, count($cols));
-        $colW = $usableW / $colCount;
-        // Draw each in cluster
-        foreach ($clIdxs as $ii) {
-            $e = $items[$ii]; $ev = $e['ev']; $colIdx = $assign[$ii];
-            $innerPad = 0.02; // inner per-event horizontal padding
-            $bx = $xLeft + $sidePad + $colIdx * $colW + $innerPad;
-            $topFrac = $e['startMin'] / ($rows*60);
-            $htFrac  = max(5/($rows*60), ($e['endMin'] - $e['startMin']) / ($rows*60));
+        // Determine a baseline event (longest duration) and draw it full width;
+        // draw overlapping companions slightly indented and on top so they appear above.
+        usort($clIdxs, fn($a,$b)=> ($items[$a]['endMin'] - $items[$a]['startMin']) <=> ($items[$b]['endMin'] - $items[$b]['startMin']));
+        $baselineIdx = end($clIdxs); // longest duration
+        // Compute common geometry
+        $innerPad = 0.02;              // inner per-event horizontal padding
+        $indent   = 0.08;              // indent for overlaid events (inches)
+
+        // Helper to draw one event box with given x/width
+        $drawEvent = function(array $eItem, array $ev, float $bx, float $bw) use ($rows, $gridTop, $gridH, $rowH, $pdf, $tz) {
+            $topFrac = $eItem['startMin'] / ($rows*60);
+            $htFrac  = max(5/($rows*60), ($eItem['endMin'] - $eItem['startMin']) / ($rows*60));
             $by = $gridTop + $topFrac * $gridH;
             $bh = $htFrac * $gridH;
-            // Nudge events that start/stop exactly on the hour so they do not sit on top of hour lines
-            // Increase the offset a touch for clearer separation
-            $hourNudge = min(0.080, $rowH * 0.45); // slightly larger offset from hour lines
-            $startsOnHour = ($e['startMin'] % 60) === 0;
-            $endsOnHour   = ($e['endMin'] % 60) === 0;
+            // Nudge away from hour lines
+            $hourNudge = min(0.080, $rowH * 0.45);
+            $startsOnHour = ($eItem['startMin'] % 60) === 0;
+            $endsOnHour   = ($eItem['endMin'] % 60) === 0;
             if ($startsOnHour) { $by += $hourNudge; $bh -= $hourNudge; }
             if ($endsOnHour)   { $bh -= $hourNudge; }
-            // Ensure minimum visibility
             if ($bh < 0.10) { $bh = 0.10; }
-            // Black & white: solid white fill with black border (ignore event colors)
-            // Use a thinner border for events so they don't appear heavy
+            // Box
             $pdf->SetDrawColor(0,0,0);
             $pdf->SetLineWidth(0.008);
             $pdf->SetFillColor(255,255,255);
-            $pdf->Rect($bx, $by, max(0.02, $colW - 2*$innerPad), $bh, 'DF');
-            // Text: first line is the time range, second line is the title, optional third line for custom tags (e.g., Uber)
+            $pdf->Rect($bx, $by, max(0.02, $bw), $bh, 'DF');
+            // Text
             $sTs = (int)($ev['start']['ts'] ?? 0); $eTs = (int)($ev['end']['ts'] ?? $sTs);
             $sLblFull = (new DateTimeImmutable('@'.$sTs))->setTimezone($tz)->format('g:ia');
             $eLblFull = (new DateTimeImmutable('@'.$eTs))->setTimezone($tz)->format('g:ia');
-            // Shorten on-the-hour labels (1:00pm -> 1pm)
             $sLbl = preg_replace('/:00(AM|PM|am|pm)$/', '$1', $sLblFull);
             $eLbl = preg_replace('/:00(AM|PM|am|pm)$/', '$1', $eLblFull);
             $timeLine = $sLbl.' - '.$eLbl;
-            $summary = pdf_sanitize_punct((string)($ev['summary'] ?? ''));
-
-            // Optional third line: per-event meta such as Uber There/Back, loaded below from DB map
+            $summary  = pdf_sanitize_punct((string)($ev['summary'] ?? ''));
             $pdfUber = '';
             if (!isset($GLOBALS['__pdf_meta'])) { $GLOBALS['__pdf_meta'] = []; }
             $metaKey = $sTs.'#'.sha1(strtolower(trim((string)($ev['summary'] ?? ''))));
             if (isset($GLOBALS['__pdf_meta'][$metaKey])) {
                 $m = $GLOBALS['__pdf_meta'][$metaKey];
-                $there = !empty($m['there']);
-                $back  = !empty($m['back']);
+                $there = !empty($m['there']); $back  = !empty($m['back']);
                 if ($there && $back) { $pdfUber = 'Uber There and Back'; }
                 elseif ($there)     { $pdfUber = 'Uber There'; }
                 elseif ($back)      { $pdfUber = 'Uber Back'; }
             }
-
-            // Smaller font and controlled line height; time on its own first line
-            $pdf->SetFont('Helvetica', '', 6);
+            // Decide how many lines based on height (duration-aware)
+            $pdf->SetFont('Helvetica','',6);
             $pdf->SetXY($bx + 0.025, $by + 0.030 + ($startsOnHour ? 0.006 : 0));
-            $contentLines = pdf_txt($timeLine)."\n".pdf_txt($summary);
-            if ($pdfUber !== '') { $contentLines .= "\n".pdf_txt($pdfUber); }
-            $pdf->MultiCell($colW - 0.08, 0.11, $contentLines, 0, 'L');
-            // Restore default grid/event line width for any subsequent shapes
+            $availableH = max(0.0, $bh - 0.050); // account for top/bottom padding
+            $lineH = 0.11;
+            $maxLines = (int)floor($availableH / $lineH);
+            // time is always line 1
+            $out = pdf_txt($timeLine);
+            if ($maxLines >= 2) {
+                $out .= "\n".pdf_txt($summary);
+                if ($maxLines >= 3 && $pdfUber !== '') {
+                    $out .= "\n".pdf_txt($pdfUber);
+                }
+            }
+            $pdf->MultiCell(max(0.02, $bw - 0.08), $lineH, $out, 0, 'L');
             $pdf->SetLineWidth(0.02);
+        };
+
+        // Draw baseline full width first
+        $baseItem = $items[$baselineIdx];
+        $baseEv   = $baseItem['ev'];
+        $baseBx   = $xLeft + $sidePad + $innerPad;
+        $baseBw   = max(0.02, $usableW - 2*$innerPad);
+        $drawEvent($baseItem, $baseEv, $baseBx, $baseBw);
+
+        // Draw the rest with a slight indent so they appear on top of the baseline
+        foreach ($clIdxs as $ii) {
+            if ($ii === $baselineIdx) continue;
+            $e = $items[$ii]; $ev = $e['ev'];
+            $bx = $xLeft + $sidePad + $indent + $innerPad;
+            $bw = max(0.02, $usableW - 2*$innerPad - $indent);
+            $drawEvent($e, $ev, $bx, $bw);
         }
     }
 }

@@ -318,7 +318,18 @@ if ($printMode) {
         padding: .25rem .4rem;
         overflow: hidden;
       }
-      .event-title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+      /* Slight font reduction for short events to help avoid overflow */
+      .event-block.small-event { font-size: .8em; }
+      .event-block.tiny-event  { font-size: .7em; }
+      .event-title {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        display: -webkit-box;
+        -webkit-line-clamp: 1; /* keep to a single visible line to avoid overflow */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
       .event-block .hide-pdf-link { color: #6c757d; }
       .event-block:hover .hide-pdf-link { opacity: 1 !important; }
       .uber-pill { border: 1px solid #6c757d; border-radius: 8px; padding: 0 4px; text-decoration: none; color: #6c757d; opacity: .6; background: #fff; }
@@ -752,7 +763,21 @@ if ($printMode) {
                         $topPerc = max(0.0, min(100.0, ($t['top_min'] / $totalMinutes) * 100.0));
                         $heightPerc = max(0.1, ($t['height_min'] / $totalMinutes) * 100.0);
                     ?>
-                      <div class="event-block" data-start-ts="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" data-uber-there="<?= !empty($t['pdf_uber_there']) ? '1' : '0' ?>" data-uber-back="<?= !empty($t['pdf_uber_back']) ? '1' : '0' ?>" style="
+                      <?php
+                        // Determine how many text lines we can safely show inside the event block
+                        // based on the clipped duration (in minutes). This prevents overflow for
+                        // short events by hiding lower-priority lines.
+                        $mins = (int)$t['height_min'];
+                        // Always show line 1 (time). Allow the title starting at ~30 minutes.
+                        $showTitle = $mins >= 30;
+                        // Allow the third line (Uber) only for longer events.
+                        $showUber  = $mins >= 60;
+                        // Slightly reduce font size for very short events to improve fit.
+                        $extraClass = '';
+                        if ($mins < 30) { $extraClass = ' tiny-event'; }
+                        elseif ($mins < 45) { $extraClass = ' small-event'; }
+                      ?>
+                      <div class="event-block<?= $extraClass ?>" data-start-ts="<?= (int)$t['start_ts'] ?>" data-summary="<?= h($ev['summary'] ?? '') ?>" data-uber-there="<?= !empty($t['pdf_uber_there']) ? '1' : '0' ?>" data-uber-back="<?= !empty($t['pdf_uber_back']) ? '1' : '0' ?>" style="
                         top: <?= number_format($topPerc, 6, '.', '') ?>%;
                         height: <?= number_format($heightPerc, 6, '.', '') ?>%;
                         left: calc((100% / <?= $cols ?>) * <?= $col ?> + 4px);
@@ -786,16 +811,18 @@ if ($printMode) {
                           ?>
                           <?= h($sLabel) ?> – <?= h($eLabel) ?>
                         </div>
-                        <div class="fw-semibold small event-title">
-                          <?= h($ev['summary'] ?: '(No title)') ?>
-                        </div>
+                        <?php if ($showTitle): ?>
+                          <div class="fw-semibold small event-title">
+                            <?= h($ev['summary'] ?: '(No title)') ?>
+                          </div>
+                        <?php endif; ?>
                         <?php
                           $uberLine = [];
                           if (!empty($t['pdf_uber_there'])) $uberLine[] = 'Uber There';
                           if (!empty($t['pdf_uber_back']))  $uberLine[] = 'Uber Back';
                           $uberLine = implode(' and ', $uberLine);
                         ?>
-                        <?php if ($uberLine): ?>
+                        <?php if ($uberLine && $showUber): ?>
                           <div class="small text-muted ev-uber-line"><?= h($uberLine) ?></div>
                         <?php endif; ?>
                       </div>
