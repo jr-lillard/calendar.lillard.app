@@ -171,6 +171,29 @@ function css_colors_from_hex(?string $hex): ?array {
     $bd = sprintf('rgba(%d,%d,%d,0.6)', $r,$g,$b);
     return ['bg'=>$bg,'bd'=>$bd];
 }
+
+// Derive a clean anniversary title in the form "Name + Name" from a summary
+// by stripping common words like "anniversary"/"wedding" and normalizing
+// connectors ("and", "&") to a plus sign.
+function derive_anniv_names(string $summary): string {
+    $orig = $summary;
+    $s = trim($summary);
+    // Remove possessive anniversary (e.g., "John & Jane's Anniversary")
+    $s = preg_replace("/\b['’]s\s+anniversary\b/i", '', $s);
+    // Remove generic words
+    $s = preg_replace("/\b(wedding|marriage|anniversary|anniv)\b/iu", '', $s);
+    // Remove common separators that often surround the keyword
+    $s = preg_replace("/[\-–—:|]/u", ' ', $s);
+    // Normalize connectors to '+':
+    $s = preg_replace("/\s*&\s*/u", ' + ', $s);
+    $s = preg_replace("/\s+and\s+/iu", ' + ', $s);
+    // Collapse whitespace and trim punctuation
+    $s = preg_replace("/\s+/u", ' ', $s);
+    $s = trim($s, " \t\n\r\0\x0B-–—:|,.");
+    // If we didn't manage to cleanly derive names, fall back to original summary
+    if ($s === '') return trim($orig);
+    return $s;
+}
 // Enable on-screen print preview mode with ?print=1
 $printMode = isset($_GET['print']) && $_GET['print'] !== '0';
 if ($printMode) {
@@ -688,7 +711,14 @@ if ($printMode) {
                         }
                       ?>
                       <div class="all-day-block" title="<?= h(($ev['summary'] ?? '') . ($ageText ? ' - '.$ageText : '') . ($annivText ? ' - '.$annivText : '')) ?>" style="<?= $clr ? 'border-color: '.$clr['bd'].';' : '' ?>">
-                        <span class="fw-semibold all-day-title"><?= h($ev['summary'] ?: '(No title)') ?></span>
+                        <?php
+                          // For anniversaries, prefer a clean names line ("Name + Name") as the title
+                          $titleForAllDay = $ev['summary'] ?: '(No title)';
+                          if ($annivText) {
+                              $titleForAllDay = derive_anniv_names((string)($ev['summary'] ?? ''));
+                          }
+                        ?>
+                        <span class="fw-semibold all-day-title"><?= h($titleForAllDay) ?></span>
                         <?php if ($ageText): ?>
                           <span class="all-day-age"><?= h($ageText) ?></span>
                         <?php endif; ?>

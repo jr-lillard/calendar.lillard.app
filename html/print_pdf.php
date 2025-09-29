@@ -110,6 +110,28 @@ function pdf_strip_unknown_age(string $s): string {
     return (string)$s;
 }
 
+// Derive a clean anniversary title in the form "Name + Name" from a summary
+// by stripping common words like "anniversary"/"wedding" and normalizing
+// connectors ("and", "&") to a plus sign. Keep ASCII-safe output for core fonts.
+function pdf_derive_anniv_names(string $summary): string {
+    $orig = $summary;
+    $s = trim($summary);
+    // Remove possessive anniversary (e.g., "John & Jane's Anniversary")
+    $s = preg_replace("/\b['’]s\s+anniversary\b/i", '', $s);
+    // Remove generic words
+    $s = preg_replace("/\b(wedding|marriage|anniversary|anniv)\b/iu", '', $s);
+    // Remove common separators
+    $s = preg_replace("/[\-–—:|]/u", ' ', $s);
+    // Normalize connectors to '+'
+    $s = preg_replace("/\s*&\s*/u", ' + ', $s);
+    $s = preg_replace("/\s+and\s+/iu", ' + ', $s);
+    // Collapse spaces and trim punctuation
+    $s = preg_replace("/\s+/u", ' ', $s);
+    $s = trim($s, " \t\n\r\0\x0B-–—:|,.");
+    if ($s === '') return trim($orig);
+    return $s;
+}
+
 // Birthdate parsing & age computation (PDF-side), mirrors web view
 function pdf_parse_birthdate_from_description(?string $desc, DateTimeZone $tz): array {
     $desc = (string)$desc;
@@ -611,7 +633,10 @@ for ($d=0; $d<7; $d++) {
                 $content = $titleLines."\n".$yearsLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
             } elseif ($annivYears !== null) {
-                $titleLines = pdf_wrap_to_lines($pdf, $summaryRaw, ($bw - 2*$padX), 2); // allow up to 2 lines for title
+                // Anniversary: first line is a clean names line (e.g., "Jennifer + Randy"),
+                // second line shows "(NN years)". Allow the names to wrap to 2 lines if needed.
+                $names = pdf_derive_anniv_names($summaryRaw);
+                $titleLines = pdf_wrap_to_lines($pdf, $names, ($bw - 2*$padX), 2);
                 $yearsLine = '(' . (int)$annivYears . ' years)';
                 $content = $titleLines."\n".$yearsLine;
                 $pdf->MultiCell($bw - 2*$padX, $lineH, pdf_txt($content), 0, 'C');
