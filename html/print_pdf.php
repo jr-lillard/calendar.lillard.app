@@ -710,7 +710,7 @@ for ($d=0; $d<7; $d++) {
         $baselineIdx = end($clIdxs); // longest duration
         // Compute common geometry
         $innerPad = 0.02;              // inner per-event horizontal padding
-        $indent   = 0.08;              // indent for overlaid events (inches)
+        $indent   = 0.08;              // indent for overlaid events (inches, applied on both sides)
 
         // Helper to draw one event box with given x/width
         $drawEvent = function(array $eItem, array $ev, float $bx, float $bw) use ($rows, $gridTop, $gridH, $rowH, $pdf, $tz) {
@@ -748,19 +748,36 @@ for ($d=0; $d<7; $d++) {
                 elseif ($there)     { $pdfUber = 'Uber There'; }
                 elseif ($back)      { $pdfUber = 'Uber Back'; }
             }
-            // Decide how many lines based on height (duration-aware)
+            // Decide lines by duration, but ensure short (30m) events still show title
             $pdf->SetFont('Helvetica','',6);
             $pdf->SetXY($bx + 0.025, $by + 0.030 + ($startsOnHour ? 0.006 : 0));
             $availableH = max(0.0, $bh - 0.050); // account for top/bottom padding
+            $durMin = max(0, $eItem['endMin'] - $eItem['startMin']);
+            // Target line count by duration
+            $targetLines = 1;
+            if ($durMin >= 60) { $targetLines = 3; }
+            elseif ($durMin >= 30) { $targetLines = 2; }
+            // Start with a base line height; shrink slightly to fit target lines if needed
             $lineH = 0.11;
+            if ($targetLines > 1) {
+                $needH = $targetLines * $lineH + 0.00;
+                if ($needH > $availableH && $availableH > 0.0) {
+                    // shrink line height but not below 0.085in
+                    $lineH = max(0.085, ($availableH - 0.00) / $targetLines);
+                }
+            }
             $maxLines = (int)floor($availableH / $lineH);
-            // time is always line 1
+            // keep at least target lines if there is any space at all
+            if ($availableH > 0.0) {
+                $maxLines = max(min($targetLines, 3), min($maxLines, 3));
+            }
+            // Build text: time always first line; include title and Uber per line budget
             $out = pdf_txt($timeLine);
             if ($maxLines >= 2) {
                 $out .= "\n".pdf_txt($summary);
-                if ($maxLines >= 3 && $pdfUber !== '') {
-                    $out .= "\n".pdf_txt($pdfUber);
-                }
+            }
+            if ($maxLines >= 3 && $pdfUber !== '') {
+                $out .= "\n".pdf_txt($pdfUber);
             }
             $pdf->MultiCell(max(0.02, $bw - 0.08), $lineH, $out, 0, 'L');
             $pdf->SetLineWidth(0.02);
@@ -777,8 +794,9 @@ for ($d=0; $d<7; $d++) {
         foreach ($clIdxs as $ii) {
             if ($ii === $baselineIdx) continue;
             $e = $items[$ii]; $ev = $e['ev'];
+            // indent both left and right for overlapping events
             $bx = $xLeft + $sidePad + $indent + $innerPad;
-            $bw = max(0.02, $usableW - 2*$innerPad - $indent);
+            $bw = max(0.02, $usableW - 2*$innerPad - (2*$indent));
             $drawEvent($e, $ev, $bx, $bw);
         }
     }
