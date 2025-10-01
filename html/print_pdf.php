@@ -775,15 +775,57 @@ for ($d=0; $d<7; $d++) {
             if ($availableH > 0.0) {
                 $maxLines = max(min($targetLines, 3), min($maxLines, 3));
             }
-            // Build text: time always first line; include title and Uber per line budget
-            $out = pdf_txt($timeLine);
-            if ($maxLines >= 2) {
-                $out .= "\n".pdf_txt($summary);
+            // Uber flags: show compact labels within existing lines
+            $hasUber = ($pdfUber !== '');
+            // Split into two right-aligned labels per spec:
+            //  - Line 1 (time): show "Uber" at far right if any Uber selected
+            //  - Line 2 (title): show "There", "Back", or "There + Back" at far right
+            $uberWord = '';
+            $uberDetail = '';
+            if ($hasUber) {
+                // Derive concise detail
+                if (stripos($pdfUber, 'There and Back') !== false)      { $uberDetail = 'There + Back'; }
+                elseif (stripos($pdfUber, 'There') !== false)           { $uberDetail = 'There'; }
+                elseif (stripos($pdfUber, 'Back') !== false)            { $uberDetail = 'Back'; }
+                $uberWord = 'Uber';
             }
-            if ($maxLines >= 3 && $pdfUber !== '') {
-                $out .= "\n".pdf_txt($pdfUber);
+
+            // Text box inner metrics
+            $innerX = $bx + 0.025;             // small left padding
+            $innerW = max(0.02, $bw - 0.08);   // inner width similar to prior MultiCell width
+            $yLine  = $by + 0.030 + ($startsOnHour ? 0.006 : 0);
+
+            // Helper to draw a single line with left and optional right text, ellipsizing left if needed
+            $drawLine = function(string $leftUtf8, string $rightUtf8) use ($pdf, $innerX, $innerW, $lineH) {
+                $gap = 0.02; // space between left and right
+                $rTxt = ($rightUtf8 !== '') ? pdf_txt($rightUtf8) : '';
+                $rW   = ($rTxt !== '') ? $pdf->GetStringWidth($rTxt) : 0.0;
+                $leftMax = ($rW > 0.0) ? max(0.02, $innerW - ($rW + $gap)) : $innerW;
+                $lWrapped = pdf_wrap_to_lines($pdf, $leftUtf8, $leftMax, 1);
+                // Left
+                $pdf->SetXY($innerX, $pdf->GetY());
+                $pdf->Cell($leftMax, $lineH, pdf_txt($lWrapped), 0, 0, 'L');
+                // Right
+                if ($rW > 0.0) {
+                    $pdf->SetXY($innerX + $innerW - $rW, $pdf->GetY());
+                    $pdf->Cell($rW, $lineH, $rTxt, 0, 0, 'R');
+                }
+                // Move down for next line
+                $pdf->SetXY($innerX, $pdf->GetY() + $lineH);
+            };
+
+            // Position cursor for first line
+            $pdf->SetXY($innerX, $yLine);
+
+            // Decide which lines to draw based on height budget
+            if ($maxLines <= 1) {
+                // Only time line fits; include compact Uber marker at right if any
+                $drawLine($timeLine, $uberWord);
+            } else {
+                // Two lines fit: time+Uber, then title+detail
+                $drawLine($timeLine, $uberWord);
+                $drawLine($summary, $uberDetail);
             }
-            $pdf->MultiCell(max(0.02, $bw - 0.08), $lineH, $out, 0, 'L');
             $pdf->SetLineWidth(0.02);
         };
 
