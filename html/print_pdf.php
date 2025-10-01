@@ -704,10 +704,10 @@ for ($d=0; $d<7; $d++) {
     $sidePad = 0.06;                  // equal left/right outer padding
     $usableW = max(0.10, $dayW - 2*$sidePad);
     foreach ($clusters as $clIdxs) {
-        // Determine a baseline event (longest duration) and draw it full width;
-        // draw overlapping companions slightly indented and on top so they appear above.
-        usort($clIdxs, fn($a,$b)=> ($items[$a]['endMin'] - $items[$a]['startMin']) <=> ($items[$b]['endMin'] - $items[$b]['startMin']));
-        $baselineIdx = end($clIdxs); // longest duration
+        // Determine a baseline event by earliest start and draw it full width;
+        // later events draw afterwards, slightly indented and therefore appear on top.
+        usort($clIdxs, fn($a,$b)=> ($items[$a]['startMin'] <=> $items[$b]['startMin']));
+        $baselineIdx = $clIdxs[0]; // earliest starts first (underneath)
         // Compute common geometry
         $innerPad = 0.02;              // inner per-event horizontal padding
         $indent   = 0.08;              // indent for overlaid events (inches, applied on both sides)
@@ -719,7 +719,11 @@ for ($d=0; $d<7; $d++) {
             $by = $gridTop + $topFrac * $gridH;
             $bh = $htFrac * $gridH;
             // Nudge away from hour lines
-            $hourNudge = min(0.080, $rowH * 0.45);
+            // Use smaller nudges for short events so their text has room
+            $durMin = max(0, $eItem['endMin'] - $eItem['startMin']);
+            $hourNudge = ($durMin < 60)
+                ? min(0.040, $rowH * 0.20)
+                : min(0.080, $rowH * 0.45);
             $startsOnHour = ($eItem['startMin'] % 60) === 0;
             $endsOnHour   = ($eItem['endMin'] % 60) === 0;
             if ($startsOnHour) { $by += $hourNudge; $bh -= $hourNudge; }
