@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Credentials live in html/config.php (git-ignored). See config.php.example.
 
 session_start();
+require_once __DIR__ . '/lib_auth.php';
 // Force fresh load of the login shell to avoid stale CDN/browser cache
 @header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 @header('Pragma: no-cache');
@@ -31,7 +32,8 @@ if (file_exists($configPath)) {
     }
 }
 
-// If already signed in, go to dashboard
+// If already signed in (via session or device token), go to dashboard
+if (!isset($_SESSION['user_id'])) { auth_try_device_login(); }
 if (isset($_SESSION['user_id'])) { header('Location: dashboard.php'); exit; }
 ?>
 <!doctype html>

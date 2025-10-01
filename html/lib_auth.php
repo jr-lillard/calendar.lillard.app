@@ -136,12 +136,52 @@ function auth_try_device_login(): bool {
             }
             // touch last_used
             $pdo->prepare("UPDATE device_tokens SET last_used_at = NOW() WHERE device_hash = ?")->execute([$hash]);
+            // Refresh cookie expiry so the device stays logged in until explicit logout
+            $days = max(1, (int)$cfg['magic']['device_cookie_days']);
+            $expire = time() + $days*86400;
+            $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            setcookie($cookieName, $raw, [
+                'expires' => $expire,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
             return true;
         }
     } catch (Throwable $e) {
         // ignore
     }
     return false;
+}
+
+/**
+ * Revoke the current device token (if present) and remove the cookie.
+ * Call this during logout so the device won't auto-login again.
+ */
+function auth_revoke_current_device(): void {
+    $cfg = auth_config();
+    $cookieName = (string)$cfg['magic']['device_cookie_name'];
+    $raw = $_COOKIE[$cookieName] ?? '';
+    if ($raw !== '') {
+        try {
+            $pdo = auth_pdo();
+            auth_ensure_tables($pdo);
+            $hash = auth_hash($raw);
+            $pdo->prepare('UPDATE device_tokens SET revoked = 1, last_used_at = NOW() WHERE device_hash = ?')->execute([$hash]);
+        } catch (Throwable $e) {
+            // ignore failures; we'll still clear the cookie
+        }
+        // Clear device cookie
+        setcookie($cookieName, '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        unset($_COOKIE[$cookieName]);
+    }
 }
 
 /**
